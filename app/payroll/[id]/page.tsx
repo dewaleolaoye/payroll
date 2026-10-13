@@ -1,7 +1,10 @@
 "use client";
 import { use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  DownloadSimpleIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import {
   Badge,
@@ -30,7 +33,7 @@ export default function RunDetail({
   return (
     <>
       <Link href="/payroll" className="back-link">
-        <ArrowLeft size={14} />
+        <ArrowLeftIcon size={14} />
         Payroll runs
       </Link>
       <PageHeading
@@ -39,7 +42,7 @@ export default function RunDetail({
         description={`${run.id} · Processed by ${run.processedBy} on ${displayDate(run.date)}`}
       >
         <button className="button secondary" onClick={exportData}>
-          <Download size={14} />
+          <DownloadSimpleIcon size={14} />
           Export source data
         </button>
       </PageHeading>

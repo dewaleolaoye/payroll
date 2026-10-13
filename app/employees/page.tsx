@@ -1,7 +1,12 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Plus, ArrowUpRight, Download } from "lucide-react";
+import {
+  MagnifyingGlassIcon,
+  PlusIcon,
+  ArrowUpRightIcon,
+  DownloadSimpleIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import {
   Badge,
@@ -36,18 +41,18 @@ export default function Employees() {
         description="Manage employee records from onboarding through their final payroll."
       >
         <button className="button secondary" onClick={exportData}>
-          <Download size={15} />
+          <DownloadSimpleIcon size={15} />
           Export source data
         </button>
         <Link href="/employees/new" className="button">
-          <Plus size={15} />
+          <PlusIcon size={15} />
           New hire
         </Link>
       </PageHeading>
       <section className="surface">
         <div className="toolbar">
           <div className="search">
-            <Search size={15} />
+            <MagnifyingGlassIcon size={15} />
             <input
               aria-label="Search employees"
               placeholder="Search by name, employee ID, or role…"
@@ -139,7 +144,7 @@ export default function Employees() {
                       aria-label={`Open ${e.name}`}
                       className="text-link"
                     >
-                      <ArrowUpRight size={15} />
+                      <ArrowUpRightIcon size={15} />
                     </Link>
                   </td>
                 </tr>

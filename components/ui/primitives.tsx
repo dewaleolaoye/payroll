@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { X, ArrowRight, Inbox } from "lucide-react";
+import {
+  XIcon,
+  ArrowRightIcon,
+  TrayIcon,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 export function PageHeading({
   eyebrow,
@@ -51,13 +55,13 @@ export function Empty({
 }) {
   return (
     <div className="empty">
-      <Inbox size={28} />
+      <TrayIcon size={28} />
       <h3>{title}</h3>
       <p>{text}</p>
       {href && (
         <Link className="button secondary" href={href}>
           {action}
-          <ArrowRight size={15} />
+          <ArrowRightIcon size={15} />
         </Link>
       )}
     </div>
@@ -146,7 +150,7 @@ export function Modal({
             aria-label="Close dialog"
             onClick={onClose}
           >
-            <X size={19} />
+            <XIcon size={19} />
           </button>
         </div>
         {children}

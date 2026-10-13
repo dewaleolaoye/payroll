@@ -1,7 +1,13 @@
 "use client";
 import { use, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, LogOut, Pencil, ShieldCheck, Send } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  SignOutIcon,
+  PencilSimpleIcon,
+  ShieldCheckIcon,
+  PaperPlaneTiltIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import { Badge, Empty, PageHeading } from "@/components/ui/primitives";
 import { currency, displayDate, displayPeriod } from "@/lib/domain/model";
@@ -68,7 +74,7 @@ export default function EmployeeDetail({
   return (
     <>
       <Link className="back-link" href="/employees">
-        <ArrowLeft size={14} />
+        <ArrowLeftIcon size={14} />
         Employee register
       </Link>
       <PageHeading
@@ -81,7 +87,7 @@ export default function EmployeeDetail({
           onClick={() => setDialog("bank")}
           disabled={!canEdit}
         >
-          <Pencil size={14} />
+          <PencilSimpleIcon size={14} />
           Edit bank details
         </button>
         {e.employment === "Employed" && e.approval === "Approved" && (
@@ -90,7 +96,7 @@ export default function EmployeeDetail({
             disabled={!canEdit}
             onClick={() => setDialog("exit")}
           >
-            <LogOut size={14} />
+            <SignOutIcon size={14} />
             Record exit
           </button>
         )}
@@ -105,7 +111,7 @@ export default function EmployeeDetail({
             disabled={actor.role !== "HR Officer"}
             onClick={() => setDialog("hire")}
           >
-            <Pencil size={14} />
+            <PencilSimpleIcon size={14} />
             Edit hire
           </button>
         )}
@@ -115,7 +121,7 @@ export default function EmployeeDetail({
             disabled={actor.role !== "HR Officer"}
             onClick={() => act({ type: "submitHire", id })}
           >
-            <Send size={14} />
+            <PaperPlaneTiltIcon size={14} />
             Submit for approval
           </button>
         )}
@@ -201,7 +207,7 @@ export default function EmployeeDetail({
                   ? "Employment & approval"
                   : "Bank information"}
             </h2>
-            <ShieldCheck size={16} className="text-primary" />
+            <ShieldCheckIcon size={16} className="text-primary" />
           </div>
           <div className="detail-grid">
             {fields.map(([label, value]) => (

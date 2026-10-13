@@ -1,17 +1,17 @@
 "use client";
 import Link from "next/link";
 import {
-  Users,
-  ClipboardCheck,
-  Wallet,
-  LogOut,
-  Plus,
-  ArrowRight,
-  ArrowUpRight,
-  CalendarDays,
-  ShieldCheck,
-  FileText,
-} from "lucide-react";
+  UsersThreeIcon,
+  SealCheckIcon,
+  WalletIcon,
+  SignOutIcon,
+  PlusIcon,
+  ArrowRightIcon,
+  ArrowUpRightIcon,
+  CalendarDotsIcon,
+  ShieldCheckIcon,
+  FileTextIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import { Badge, EmployeeName, PageHeading } from "@/components/ui/primitives";
 import {
@@ -35,18 +35,18 @@ export default function Overview() {
         description={`A clear view of your people, approvals, and payroll. Welcome, ${actor.name.split(" ")[0]}.`}
       >
         <Link className="button secondary" href="/payroll">
-          <Wallet size={15} />
+          <WalletIcon size={15} />
           View payroll
         </Link>
         <Link className="button" href="/employees/new">
-          <Plus size={15} />
+          <PlusIcon size={15} />
           New hire
         </Link>
       </PageHeading>
       <section className="hero">
         <div>
           <div className="hero-label">
-            <CalendarDays size={13} />
+            <CalendarDotsIcon size={13} />
             Current payroll cycle
           </div>
           <h2>{displayPeriod(state.date)} payroll</h2>
@@ -65,7 +65,7 @@ export default function Overview() {
             className="button"
           >
             {run ? "View run" : "Prepare payroll"}
-            <ArrowRight size={14} />
+            <ArrowRightIcon size={14} />
           </Link>
         </div>
       </section>
@@ -79,7 +79,7 @@ export default function Overview() {
               )
               .length.toString(),
             note: `${new Set(state.employees.map((e) => e.department)).size} departments`,
-            icon: Users,
+            icon: UsersThreeIcon,
           },
           {
             label: "Pending hire approvals",
@@ -87,19 +87,19 @@ export default function Overview() {
             note: pending.length
               ? "Awaiting independent review"
               : "All approvals up to date",
-            icon: ClipboardCheck,
+            icon: SealCheckIcon,
           },
           {
             label: "Estimated payroll",
             value: currency(total),
             note: `${eligible.length} payroll-eligible employees`,
-            icon: Wallet,
+            icon: WalletIcon,
           },
           {
             label: "Recorded exits",
             value: state.exits.length.toString().padStart(2, "0"),
             note: "Source records retained",
-            icon: LogOut,
+            icon: SignOutIcon,
           },
         ].map((m) => (
           <div className="metric" key={m.label}>
@@ -121,7 +121,7 @@ export default function Overview() {
             </div>
             <Link href="/employees" className="text-link">
               All employees
-              <ArrowUpRight size={14} />
+              <ArrowUpRightIcon size={14} />
             </Link>
           </div>
           <div className="table-scroll">
@@ -171,25 +171,25 @@ export default function Overview() {
               href: "/approvals",
               title: "Review new hires",
               text: `${pending.length} pending approval${pending.length === 1 ? "" : "s"}`,
-              icon: ClipboardCheck,
+              icon: SealCheckIcon,
             },
             {
               href: "/payroll",
               title: "Prepare monthly payroll",
               text: `${displayPeriod(state.date)} · ${eligible.length} eligible employees`,
-              icon: Wallet,
+              icon: WalletIcon,
             },
             {
               href: "/exits",
               title: "Manage employee exits",
               text: "Record exits and update payroll eligibility",
-              icon: LogOut,
+              icon: SignOutIcon,
             },
             {
               href: "/simulation",
               title: "Explore a scenario",
               text: "Guided walkthroughs and source-data export",
-              icon: FileText,
+              icon: FileTextIcon,
             },
           ].map((t) => (
             <Link key={t.href} className="task" href={t.href}>
@@ -200,7 +200,7 @@ export default function Overview() {
                 <strong>{t.title}</strong>
                 <p>{t.text}</p>
               </div>
-              <ArrowUpRight size={15} />
+              <ArrowUpRightIcon size={15} />
             </Link>
           ))}
         </section>
@@ -211,7 +211,7 @@ export default function Overview() {
             <h2>From hire to payroll</h2>
             <p>The normal process, in four steps</p>
           </div>
-          <ShieldCheck size={18} className="text-primary" />
+          <ShieldCheckIcon size={18} className="text-primary" />
         </div>
         <div className="process-steps">
           {[
