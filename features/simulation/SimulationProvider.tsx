@@ -7,14 +7,22 @@ import {
   useRef,
   useState,
 } from "react";
+import { XIcon } from "@phosphor-icons/react";
 import { Actor, Scenario, State, actors } from "@/lib/domain/model";
 import { Action, parseState, seed, transition } from "@/lib/domain/workflow";
+import { authenticate } from "@/lib/auth/accounts";
+interface Session {
+  actorId: string;
+  signedInAt: string;
+}
 interface ContextValue {
   state: State;
   actor: Actor;
   ready: boolean;
   storageWarning: boolean;
-  setActor: (id: string) => void;
+  signedIn: boolean;
+  signIn: (email: string, password: string) => boolean;
+  signOut: () => void;
   act: (action: Action) => boolean;
   reset: (scenario: Scenario) => void;
   notify: (message: string) => void;
@@ -22,6 +30,20 @@ interface ContextValue {
 }
 const Context = createContext<ContextValue | null>(null);
 const key = "nlng-payroll-v1";
+const sessionKey = "nlng-payroll-session";
+function parseSession(raw: string | null): Session | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<Session>;
+    return typeof value.actorId === "string" &&
+      typeof value.signedInAt === "string" &&
+      actors.some((a) => a.id === value.actorId)
+      ? { actorId: value.actorId, signedInAt: value.signedInAt }
+      : null;
+  } catch {
+    return null;
+  }
+}
 export function SimulationProvider({
   children,
 }: {
@@ -29,13 +51,14 @@ export function SimulationProvider({
 }) {
   const [state, setState] = useState<State>(() => seed("Clean baseline"));
   const current = useRef(state);
-  const [actorId, setActorId] = useState(actors[0].id);
+  const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [storageWarning, setStorageWarning] = useState(false);
   const [message, setMessage] = useState("");
-  const actor = actors.find((a) => a.id === actorId) ?? actors[0];
+  const actor = actors.find((a) => a.id === session?.actorId) ?? actors[0];
   useEffect(() => {
     try {
+      setSession(parseSession(localStorage.getItem(sessionKey)));
       const raw = localStorage.getItem(key);
       if (raw) {
         const saved = parseState(raw);
@@ -88,11 +111,30 @@ export function SimulationProvider({
     },
     [actor],
   );
+  const saveSession = (next: Session | null) => {
+    setSession(next);
+    try {
+      if (next) localStorage.setItem(sessionKey, JSON.stringify(next));
+      else localStorage.removeItem(sessionKey);
+    } catch {
+      setStorageWarning(true);
+    }
+  };
+  const signIn = (email: string, password: string): boolean => {
+    const match = authenticate(email, password);
+    if (!match) return false;
+    saveSession({ actorId: match.id, signedInAt: new Date().toISOString() });
+    setMessage(`Signed in as ${match.name} · ${match.role}.`);
+    return true;
+  };
+  const signOut = () => {
+    saveSession(null);
+    setMessage("Signed out. Demo data is kept for the next persona.");
+  };
   const reset = (scenario: Scenario) => {
     const next = seed(scenario);
     current.current = next;
     setState(next);
-    setActorId(actors[0].id);
     setMessage(
       `${scenario} loaded. Simulation restored to its starting state.`,
     );
@@ -127,7 +169,9 @@ export function SimulationProvider({
         actor,
         ready,
         storageWarning,
-        setActor: setActorId,
+        signedIn: session !== null,
+        signIn,
+        signOut,
         act,
         reset,
         notify: setMessage,
@@ -142,7 +186,7 @@ export function SimulationProvider({
             aria-label="Dismiss notification"
             onClick={() => setMessage("")}
           >
-            ×
+            <XIcon size={16} weight="bold" />
           </button>
         </div>
       )}

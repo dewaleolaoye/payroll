@@ -2,41 +2,42 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight,
-  RotateCcw,
-  Download,
-  Users,
-  UserMinus,
-  Copy,
-  Database,
-  Check,
-  CalendarDays,
-} from "lucide-react";
+  ArrowRightIcon,
+  ArrowCounterClockwiseIcon,
+  DownloadSimpleIcon,
+  UsersThreeIcon,
+  UserMinusIcon,
+  CopyIcon,
+  DatabaseIcon,
+  CheckIcon,
+  CalendarDotsIcon,
+  SignOutIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import { Badge, Modal, PageHeading } from "@/components/ui/primitives";
-import { Scenario, actors, displayDate, scenarios } from "@/lib/domain/model";
+import { Scenario, displayDate, scenarios } from "@/lib/domain/model";
 export default function Simulation() {
-  const { state, actor, setActor, reset, exportData, act } = useSimulation();
+  const { state, actor, signOut, reset, exportData, act } = useSimulation();
   const [selected, setSelected] = useState<Scenario | null>(null);
   const cards = [
     {
       title: "Clean baseline" as const,
-      icon: Users,
+      icon: UsersThreeIcon,
       text: "Create a hire, obtain independent approval, process payroll, and handle a normal exit.",
     },
     {
       title: "Ghost worker" as const,
-      icon: UserMinus,
+      icon: UserMinusIcon,
       text: "Record an exit with delayed payroll synchronization. The exited worker remains eligible and receives a simulated payment.",
     },
     {
       title: "Shared account" as const,
-      icon: Copy,
+      icon: CopyIcon,
       text: "Create and approve a distinct employee using an existing account, then pay both records into that account.",
     },
     {
       title: "Seeded fallback" as const,
-      icon: Database,
+      icon: DatabaseIcon,
       text: "Load historical source records with a ghost worker, a shared account, and old activity evidence. Ready for a live demonstration.",
     },
   ];
@@ -191,17 +192,17 @@ export default function Simulation() {
       <PageHeading
         eyebrow="EXPERIENCE CENTER · SCENARIO 09"
         title="Simulation controls"
-        description="Set the scene, switch actors, and replay the source-system process."
+        description="Set the scene, sign in as each persona, and replay the source-system process."
       >
         <button className="button secondary" onClick={exportData}>
-          <Download size={14} />
+          <DownloadSimpleIcon size={14} />
           Export source data
         </button>
         <button
           className="button secondary"
           onClick={() => setSelected(state.scenario)}
         >
-          <RotateCcw size={14} />
+          <ArrowCounterClockwiseIcon size={14} />
           Reset current demo
         </button>
       </PageHeading>
@@ -219,16 +220,19 @@ export default function Simulation() {
           <Badge tone="green">{state.scenario}</Badge>
         </div>
         <div className="form-grid form-section">
-          <label>
-            Current actor
-            <select value={actor.id} onChange={(e) => setActor(e.target.value)}>
-              {actors.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} · {a.role}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div>
+            <label>Signed-in persona</label>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="avatar small">{actor.initials}</span>
+              <span className="flex-1">
+                <strong>{actor.name}</strong> · {actor.role}
+              </span>
+              <button className="button secondary small" onClick={signOut}>
+                <SignOutIcon size={13} />
+                Sign out to switch
+              </button>
+            </div>
+          </div>
           <div>
             <label>Simulation date</label>
             <div className="flex items-center gap-3 mt-2">
@@ -237,7 +241,7 @@ export default function Simulation() {
                 className="button secondary small"
                 onClick={() => act({ type: "advancePeriod" })}
               >
-                <CalendarDays size={13} />
+                <CalendarDotsIcon size={13} />
                 Advance one period
               </button>
             </div>
@@ -265,7 +269,7 @@ export default function Simulation() {
               {state.scenario === c.title
                 ? "Restart scenario"
                 : "Load scenario"}
-              <ArrowRight size={13} />
+              <ArrowRightIcon size={13} />
             </button>
           </section>
         ))}
@@ -285,14 +289,14 @@ export default function Simulation() {
               key={s.title}
               className={`guide-item ${s.done ? "complete" : ""}`}
             >
-              <span>{s.done ? <Check size={13} /> : i + 1}</span>
+              <span>{s.done ? <CheckIcon size={13} /> : i + 1}</span>
               <div>
                 <strong>{s.title}</strong>
                 <p>{s.text}</p>
               </div>
               <Link href={s.href} className="text-link">
                 Open
-                <ArrowRight size={14} />
+                <ArrowRightIcon size={14} />
               </Link>
             </div>
           ))}

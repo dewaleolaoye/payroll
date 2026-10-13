@@ -1,7 +1,11 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Check, CornerUpLeft, ArrowUpRight } from "lucide-react";
+import {
+  CheckIcon,
+  ArrowUUpLeftIcon,
+  ArrowUpRightIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import { Badge, Empty, Modal, PageHeading } from "@/components/ui/primitives";
 import { currency, displayDate } from "@/lib/domain/model";
@@ -22,7 +26,7 @@ export default function Approvals() {
       <div className="notice">
         {actor.role === "HR Approver"
           ? "You are reviewing as the second HR approver. Approval activates payroll eligibility."
-          : "Switch to Amina Yusuf · HR Approver in the actor menu to approve or return a hire."}
+          : "Sign in as Amina Yusuf · HR Approver to approve or return a hire."}
       </div>
       {!pending.length ? (
         <section className="surface">
@@ -65,7 +69,7 @@ export default function Approvals() {
               </div>
               <Link href={`/employees/${e.id}`} className="text-link">
                 Source record
-                <ArrowUpRight size={14} />
+                <ArrowUpRightIcon size={14} />
               </Link>
             </div>
             <div className="detail-grid">
@@ -99,7 +103,7 @@ export default function Approvals() {
                 disabled={actor.role !== "HR Approver"}
                 onClick={() => setReturning(true)}
               >
-                <CornerUpLeft size={14} />
+                <ArrowUUpLeftIcon size={14} />
                 Return for correction
               </button>
               <button
@@ -107,7 +111,7 @@ export default function Approvals() {
                 disabled={actor.role !== "HR Approver"}
                 onClick={() => act({ type: "approve", id: e.id })}
               >
-                <Check size={14} />
+                <CheckIcon size={14} />
                 Approve hire
               </button>
             </div>

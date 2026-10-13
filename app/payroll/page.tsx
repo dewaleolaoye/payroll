@@ -3,13 +3,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowRight,
-  Play,
-  CalendarDays,
-  Download,
-  ArrowUpRight,
-  Wallet,
-} from "lucide-react";
+  ArrowRightIcon,
+  PlayIcon,
+  CalendarDotsIcon,
+  DownloadSimpleIcon,
+  ArrowUpRightIcon,
+  WalletIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import {
   Badge,
@@ -46,11 +46,11 @@ export default function Payroll() {
         description="Preview the population, process simulated payments, and retain the source evidence."
       >
         <button className="button secondary" onClick={exportData}>
-          <Download size={14} />
+          <DownloadSimpleIcon size={14} />
           Export data
         </button>
         <button className="button secondary" onClick={() => setAdvance(true)}>
-          <CalendarDays size={14} />
+          <CalendarDotsIcon size={14} />
           Next period
         </button>
       </PageHeading>
@@ -86,14 +86,14 @@ export default function Payroll() {
       </section>
       {run ? (
         <div className="notice section-gap">
-          <Wallet size={16} />
+          <WalletIcon size={16} />
           <div className="flex-1">
             This period has already been processed. Historical payment values
             are preserved independently of current source records.
           </div>
           <Link href={`/payroll/${run.id}`} className="text-link">
             View processed run
-            <ArrowRight size={14} />
+            <ArrowRightIcon size={14} />
           </Link>
         </div>
       ) : (
@@ -188,7 +188,7 @@ export default function Payroll() {
               disabled={actor.role !== "Payroll Processor" || !eligible.length}
               onClick={() => setConfirm(true)}
             >
-              <Play size={14} />
+              <PlayIcon size={14} />
               Process simulated payroll
             </button>
           </div>
@@ -196,7 +196,7 @@ export default function Payroll() {
       </section>
       {actor.role !== "Payroll Processor" && !run && (
         <p className="count-note mt-3">
-          Switch to Tunde Bakare · Payroll Processor to process this period.
+          Sign in as Tunde Bakare · Payroll Processor to process this period.
         </p>
       )}
       <section className="surface section-gap">
@@ -235,7 +235,7 @@ export default function Payroll() {
                         href={`/payroll/${r.id}`}
                         aria-label={`Open ${r.id}`}
                       >
-                        <ArrowUpRight size={15} />
+                        <ArrowUpRightIcon size={15} />
                       </Link>
                     </td>
                   </tr>

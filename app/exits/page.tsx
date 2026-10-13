@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
-import { LogOut } from "lucide-react";
+import {
+  SignOutIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import {
   Badge,
@@ -37,13 +39,13 @@ export default function Exits() {
             setChoose(true);
           }}
         >
-          <LogOut size={14} />
+          <SignOutIcon size={14} />
           Record exit
         </button>
       </PageHeading>
       {!canEdit && (
         <div className="notice amber">
-          Switch to HR Officer or HR/Payroll Lead to process exits.
+          Sign in as an HR Officer or HR/Payroll Lead to process exits.
         </div>
       )}
       {state.scenario === "Ghost worker" && (

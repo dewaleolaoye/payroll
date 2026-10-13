@@ -2,7 +2,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Send, ShieldCheck, Copy } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  PaperPlaneTiltIcon,
+  ShieldCheckIcon,
+  CopyIcon,
+} from "@phosphor-icons/react";
 import { useSimulation } from "@/features/simulation/SimulationProvider";
 import { Employee, banks, departments } from "@/lib/domain/model";
 import { PageHeading } from "@/components/ui/primitives";
@@ -63,7 +68,7 @@ export default function NewHire() {
   return (
     <>
       <Link href="/employees" className="back-link">
-        <ArrowLeft size={14} />
+        <ArrowLeftIcon size={14} />
         Employee register
       </Link>
       <PageHeading
@@ -83,7 +88,7 @@ export default function NewHire() {
             recreate the source-system deviation.
           </div>
           <button className="text-link" onClick={fillShared}>
-            <Copy size={14} />
+            <CopyIcon size={14} />
             Fill demo example
           </button>
         </div>
@@ -227,13 +232,13 @@ export default function NewHire() {
               Save draft
             </button>
             <button disabled={actor.role !== "HR Officer"} className="button">
-              <Send size={14} />
+              <PaperPlaneTiltIcon size={14} />
               Submit for approval
             </button>
           </div>
         </form>
         <aside className="surface aside-card">
-          <ShieldCheck size={24} className="text-primary" />
+          <ShieldCheckIcon size={24} className="text-primary" />
           <h3>Independent approval</h3>
           <p>
             A new hire becomes payroll-eligible only after review by the second
