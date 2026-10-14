@@ -1,6 +1,6 @@
 # NLNG People & Payroll
 
-A local HR/payroll source-system simulation built with Next.js 16.4 App Router, React functional components, strict TypeScript, and Tailwind CSS 4. Audit Monitoring is outside this application.
+An HR and payroll application built with Next.js 16.4 App Router, React, strict TypeScript, and Tailwind CSS 4. It covers the employee register, new hires with independent approval, exits, and monthly payroll runs.
 
 ## Run
 
@@ -9,30 +9,24 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:4343. Select **Simulation controls** to load a scenario. Every scenario load replaces the current local snapshot after confirmation; export first to preserve a copy.
+Open http://localhost:4343 and sign in.
 
-## Demo actors
+## Accounts and roles
 
-Use the top-right actor menu or simulation controls:
+Staff accounts are defined in `lib/auth/accounts.ts` until a user database is integrated. Each account has one role:
 
-- Chukwudi Okafor, HR Officer: create/submit hires, bank edits, exits.
-- Amina Yusuf, HR Approver: independent hire approval or return.
-- Tunde Bakare, Payroll Processor: process one simulated run per period.
-- Ngozi Eze, HR/Payroll Lead: correct eligibility and bank details.
+- **HR Officer** (Chukwudi Okafor): creates and submits hires, edits bank details, records exits.
+- **HR Approver** (Amina Yusuf): approves or returns submitted hires. A hire can't be approved by the person who created it.
+- **Payroll Processor** (Tunde Bakare): processes payroll for the open period.
+- **HR/Payroll Lead** (Ngozi Eze): records exits, corrects eligibility and bank details, and closes payroll periods.
 
-Role switching simulates authorization; this is not production authentication. State is saved in the current browser's local storage with schema validation. It is not shared between browsers or users. All people, bank accounts, tax IDs, activity, and payments are synthetic.
+## Payroll periods
 
-## Walkthroughs
+All records use today's date. Payroll is processed once for the **open period**, which starts at the current month. After the run, the HR/Payroll Lead closes the period to open the next month. A period can't be processed before its month starts, and processed runs keep the salary and bank details from processing time.
 
-**Clean baseline:** create hire → switch approver → approve → switch payroll processor → process → HR officer records exit → advance period → process → confirm exclusion.
+## Data
 
-**Ghost worker:** load Ghost worker → employee EMP-001 → record exit (delayed synchronization is enabled by this scenario) → payroll processor runs payroll → inspect employee Employment and Payroll history → HR/payroll lead corrects eligibility → advance period → process → confirm exclusion.
-
-**Shared account:** load Shared account → New hire → Fill demo example → submit → approver approves → payroll processor processes → open run and compare EMP-001 and EMP-013 → lead changes new employee's bank account → advance/run again. Previous payment accounts remain unchanged.
-
-**Seeded fallback:** preloads an exited eligible worker, two employees sharing a bank account, old activity evidence, and three historical payroll runs.
-
-Exports contain versioned JSON source records and change events for future external integration. No external ingestion, detection, alerts, or audit cases are implemented. Account and salary values are snapshotted into payment records.
+Records are saved in the browser's local storage (key `nlng-payroll-v2`) with schema validation. They aren't shared between browsers or users. The app starts with 12 sample employees.
 
 ## Checks
 
@@ -42,8 +36,6 @@ npm run typecheck
 npm run build
 ```
 
-Tests cover approval/role boundaries, normal exits, ghost payments, shared accounts, payment immutability, period idempotency, future-start exclusions, returned-hire correction, persistence, and fallback reset reproducibility.
-
 ## Structure
 
-`app/` contains thin route-level views; `components/layout` and `components/ui` provide shell and primitives; `features/` contains simulation context and employee dialogs; `lib/domain` contains pure source-system transitions and typed entities. Styling uses shared NLNG colors and reusable class patterns in `app/globals.css` alongside Tailwind utilities.
+`app/` contains route-level views; `components/layout` and `components/ui` provide the shell and shared primitives; `features/app` holds the app state and session provider, and `features/workforce` the employee dialogs; `lib/domain` contains the pure workflow transitions and typed entities; `lib/auth` holds the account lookup. Styling lives in `app/globals.css` alongside Tailwind utilities.

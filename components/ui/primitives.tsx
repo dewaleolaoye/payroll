@@ -1,10 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import {
-  XIcon,
-  ArrowRightIcon,
-  TrayIcon,
-} from "@phosphor-icons/react";
+import { XIcon, ArrowRightIcon, TrayIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 export function PageHeading({
   eyebrow,

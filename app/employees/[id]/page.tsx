@@ -8,7 +8,7 @@ import {
   ShieldCheckIcon,
   PaperPlaneTiltIcon,
 } from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
 import { Badge, Empty, PageHeading } from "@/components/ui/primitives";
 import { currency, displayDate, displayPeriod } from "@/lib/domain/model";
 import {
@@ -23,7 +23,7 @@ export default function EmployeeDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { state, actor, act } = useSimulation();
+  const { state, actor, act } = useApp();
   const [tab, setTab] = useState("Profile");
   const [dialog, setDialog] = useState<
     "exit" | "bank" | "correct" | "hire" | null
@@ -33,7 +33,7 @@ export default function EmployeeDetail({
     return (
       <Empty
         title="Employee not found"
-        text="This record may belong to an earlier simulation. Open the current employee register."
+        text="This employee record doesn’t exist. Open the employee register."
         href="/employees"
         action="View employees"
       />
@@ -68,7 +68,6 @@ export default function EmployeeDetail({
         : [
             ["Bank name", e.bank],
             ["Account number", e.account],
-            ["Account type", "Synthetic demo account"],
             ["Monthly salary", currency(e.salary)],
           ];
   return (
@@ -126,13 +125,6 @@ export default function EmployeeDetail({
           </button>
         )}
       </PageHeading>
-      {e.employment === "Exited" && e.eligible && (
-        <div className="notice amber">
-          The HR record shows an exit, while payroll eligibility remains Active.
-          Open Employment and Payroll history to inspect the source evidence. A
-          HR/payroll lead can correct eligibility.
-        </div>
-      )}
       {e.approval !== "Approved" && (
         <div className="notice">
           {e.approval === "Pending"
@@ -229,10 +221,6 @@ export default function EmployeeDetail({
                     ["Reason", x.reason],
                     ["Processed date", displayDate(x.processedDate)],
                     ["Processed by", x.processedBy],
-                    [
-                      "Synchronization at exit",
-                      x.delayed ? "Delayed (simulated)" : "Completed",
-                    ],
                   ].map(([label, value]) => (
                     <div className="detail-field" key={label}>
                       <small>{label}</small>
@@ -248,9 +236,7 @@ export default function EmployeeDetail({
         <section className="surface">
           <div className="section-head">
             <h2>Payment history</h2>
-            <span className="count-note">
-              {payments.length} simulated payments
-            </span>
+            <span className="count-note">{payments.length} payments</span>
           </div>
           {payments.length ? (
             <div className="table-scroll">
@@ -304,14 +290,12 @@ export default function EmployeeDetail({
       {tab === "Activity" && (
         <>
           <div className="notice">
-            Last synthetic site-access / attendance activity:{" "}
+            Last site-access / attendance activity:{" "}
             {e.lastActivity ? displayDate(e.lastActivity) : "Not available"}.
-            Activity data is source evidence; this app does not evaluate audit
-            rules.
           </div>
           <section className="surface">
             <div className="section-head">
-              <h2>Source change history</h2>
+              <h2>Change history</h2>
             </div>
             {state.events.filter((ev) => ev.subjectId === id).length ? (
               <div className="timeline">
@@ -333,8 +317,8 @@ export default function EmployeeDetail({
               </div>
             ) : (
               <Empty
-                title="Preloaded source record"
-                text="Actions performed in this simulation will appear here with actor and date."
+                title="No changes yet"
+                text="Changes to this record will appear here with who made them and when."
               />
             )}
           </section>

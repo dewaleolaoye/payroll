@@ -6,16 +6,20 @@ import {
   SignInIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
-import { accounts, demoPassword } from "@/lib/auth/accounts";
+import { useApp } from "@/features/app/AppProvider";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { accounts, defaultPassword } from "@/lib/auth/accounts";
 export default function Login() {
-  const { signIn } = useSimulation();
+  const { signIn } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
   return (
     <div className="login-page">
+      <div className="login-theme">
+        <ThemeToggle />
+      </div>
       <div className="login-wrap">
         <div className="login-brand">
           <img src="/nlng-logo.avif" alt="NLNG" />
@@ -33,7 +37,7 @@ export default function Login() {
             setError(
               signIn(email, password)
                 ? ""
-                : "That email and password don’t match a demo account.",
+                : "That email and password don’t match an account.",
             );
           }}
         >
@@ -42,7 +46,7 @@ export default function Login() {
             <input
               type="email"
               autoComplete="username"
-              placeholder="name@nlng.demo"
+              placeholder="name@nlng.local"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -82,18 +86,18 @@ export default function Login() {
             <SignInIcon size={17} />
             Sign in
           </button>
-          <div className="demo-accounts">
-            <div className="demo-caption">DEMO ACCOUNTS</div>
-            <div className="demo-grid">
-              {accounts.map(({ actor, email: demoEmail }) => (
+          <div className="account-picker">
+            <div className="account-caption">ACCOUNTS</div>
+            <div className="account-grid">
+              {accounts.map(({ actor, email: accountEmail }) => (
                 <button
                   key={actor.id}
                   type="button"
-                  className={`demo-card ${email === demoEmail ? "selected" : ""}`}
-                  aria-pressed={email === demoEmail}
+                  className={`account-option ${email === accountEmail ? "selected" : ""}`}
+                  aria-pressed={email === accountEmail}
                   onClick={() => {
-                    setEmail(demoEmail);
-                    setPassword(demoPassword);
+                    setEmail(accountEmail);
+                    setPassword(defaultPassword);
                     setError("");
                   }}
                 >
@@ -107,10 +111,6 @@ export default function Login() {
             </div>
           </div>
         </form>
-        <p className="login-foot">
-          Synthetic demo accounts · password{" "}
-          <span className="mono">{demoPassword}</span>
-        </p>
       </div>
     </div>
   );

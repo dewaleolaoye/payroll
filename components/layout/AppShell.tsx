@@ -8,7 +8,6 @@ import {
   SealCheckIcon,
   SignOutIcon,
   WalletIcon,
-  SlidersHorizontalIcon,
   CaretDownIcon,
   ListIcon,
   XIcon,
@@ -18,7 +17,8 @@ import {
 } from "@phosphor-icons/react";
 import { displayDate, displayPeriod } from "@/lib/domain/model";
 import { accountFor } from "@/lib/auth/accounts";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 const navigation = [
   { href: "/", label: "Overview", icon: SquaresFourIcon },
   { href: "/employees", label: "Employees", icon: UsersThreeIcon },
@@ -39,8 +39,8 @@ function nextPath(): string {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { state, actor, ready, storageWarning, signedIn, signOut } =
-    useSimulation();
+  const { state, actor, today, ready, storageWarning, signedIn, signOut } =
+    useApp();
   const [open, setOpen] = useState(false);
   const [roles, setRoles] = useState(false);
   const isLogin = pathname === "/login";
@@ -63,10 +63,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const title =
     navigation.find((n) =>
       n.href === "/" ? pathname === "/" : pathname.startsWith(n.href),
-    )?.label ?? "Simulation controls";
+    )?.label ?? "";
   const pending = state.employees.filter(
     (e) => e.approval === "Pending",
   ).length;
+  const processed = state.runs.some((r) => r.period === state.period);
   return (
     <IconContext.Provider value={{ weight: "duotone" }}>
       <div className="app-shell">
@@ -110,18 +111,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 Bonny Island<small>Nigeria LNG Limited</small>
               </span>
             </div>
-            <Link
-              href="/simulation"
-              onClick={() => setOpen(false)}
-              className={pathname === "/simulation" ? "active" : ""}
-            >
-              <SlidersHorizontalIcon size={18} />
-              Simulation controls
-              <ArrowUpRightIcon size={14} />
-            </Link>
-            <div className="sidebar-footnote">
-              NLNG Experience Center · Scenario 09
-            </div>
           </div>
         </aside>
         <div className="workspace">
@@ -139,11 +128,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <strong>{title}</strong>
             </div>
             <div className="topbar-right">
-              <span className="simulation-badge">
-                <i />
-                Simulation
-              </span>
-              <span className="top-date">{displayDate(state.date)}</span>
+              <ThemeToggle />
+              <span className="top-date">{displayDate(today)}</span>
               <div className="role-wrap">
                 <button
                   className="actor-button"
@@ -187,7 +173,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       <SignOutIcon size={18} />
                       <span>
                         <strong>Sign out</strong>
-                        <small>Sign in as another persona to switch</small>
+                        <small>End this session</small>
                       </span>
                     </button>
                   </div>
@@ -196,25 +182,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <div className="period-strip">
-            <span>
-              <i />
-              {displayPeriod(state.date)} payroll period
-            </span>
-            <Link href="/simulation">
-              {state.scenario}
+            <span>{displayPeriod(state.period)} payroll period</span>
+            <Link href="/payroll">
+              {processed ? "Processed · awaiting close" : "Open"}
               <ArrowUpRightIcon size={13} />
             </Link>
           </div>
           {storageWarning && (
             <div className="notice amber">
               Local storage is unavailable. Progress will last only while this
-              page stays open. Export your source data before leaving.
+              page stays open.
             </div>
           )}
           <main>{children}</main>
           <footer className="workspace-footer">
             <span>NLNG · People & Payroll</span>
-            <span>Synthetic records. No actual payments.</span>
           </footer>
         </div>
       </div>
