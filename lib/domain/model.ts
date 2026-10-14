@@ -1,7 +1,5 @@
 export type Role =
   "HR Officer" | "HR Approver" | "Payroll Processor" | "HR/Payroll Lead";
-export type Scenario =
-  "Clean baseline" | "Ghost worker" | "Shared account" | "Seeded fallback";
 export type Approval = "Draft" | "Pending" | "Approved" | "Returned";
 export interface Employee {
   id: string;
@@ -29,7 +27,6 @@ export interface Exit {
   reason: string;
   processedDate: string;
   processedBy: string;
-  delayed: boolean;
 }
 export interface Payment {
   id: string;
@@ -39,7 +36,7 @@ export interface Payment {
   bank: string;
   account: string;
   paymentDate: string;
-  status: "Simulated paid";
+  status: "Paid";
 }
 export interface PayrollRun {
   id: string;
@@ -58,9 +55,9 @@ export interface SourceEvent {
   note: string;
 }
 export interface State {
-  version: 1;
-  scenario: Scenario;
-  date: string;
+  version: 2;
+  /** Open payroll period, "YYYY-MM". Closed manually by the HR/Payroll Lead. */
+  period: string;
   employees: Employee[];
   exits: Exit[];
   runs: PayrollRun[];
@@ -88,12 +85,6 @@ export const actors: Actor[] = [
     initials: "NE",
   },
 ];
-export const scenarios: Scenario[] = [
-  "Clean baseline",
-  "Ghost worker",
-  "Shared account",
-  "Seeded fallback",
-];
 export const departments = [
   "Maintenance",
   "Operations",
@@ -117,6 +108,12 @@ export function displayDate(date: string): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+/** Today's local calendar date as "YYYY-MM-DD". */
+export function today(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 export function period(date: string): string {
   return date.slice(0, 7);

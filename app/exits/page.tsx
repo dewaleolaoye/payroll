@@ -1,9 +1,7 @@
 "use client";
 import { useState } from "react";
-import {
-  SignOutIcon,
-} from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { SignOutIcon } from "@phosphor-icons/react";
+import { useApp } from "@/features/app/AppProvider";
 import {
   Badge,
   Empty,
@@ -14,7 +12,7 @@ import {
 import { displayDate } from "@/lib/domain/model";
 import { ExitDialog } from "@/features/workforce/RecordDialogs";
 export default function Exits() {
-  const { state, actor } = useSimulation();
+  const { state, actor } = useApp();
   const [choose, setChoose] = useState(false);
   const [selected, setSelected] = useState("");
   const [employeeId, setEmployeeId] = useState("");
@@ -45,13 +43,7 @@ export default function Exits() {
       </PageHeading>
       {!canEdit && (
         <div className="notice amber">
-          Sign in as an HR Officer or HR/Payroll Lead to process exits.
-        </div>
-      )}
-      {state.scenario === "Ghost worker" && (
-        <div className="notice amber">
-          Ghost-worker scenario: new exits simulate delayed payroll
-          synchronization. HR records the exit while eligibility stays Active.
+          Only an HR Officer or HR/Payroll Lead can process exits.
         </div>
       )}
       <section className="surface">

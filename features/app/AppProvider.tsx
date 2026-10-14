@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { XIcon } from "@phosphor-icons/react";
-import { Actor, Scenario, State, actors } from "@/lib/domain/model";
+import { Actor, State, actors, today as currentDate } from "@/lib/domain/model";
 import { Action, parseState, seed, transition } from "@/lib/domain/workflow";
 import { authenticate } from "@/lib/auth/accounts";
 interface Session {
@@ -18,18 +18,19 @@ interface Session {
 interface ContextValue {
   state: State;
   actor: Actor;
+  /** Today's date, "YYYY-MM-DD". */
+  today: string;
   ready: boolean;
   storageWarning: boolean;
   signedIn: boolean;
   signIn: (email: string, password: string) => boolean;
   signOut: () => void;
   act: (action: Action) => boolean;
-  reset: (scenario: Scenario) => void;
   notify: (message: string) => void;
-  exportData: () => void;
 }
 const Context = createContext<ContextValue | null>(null);
-const key = "nlng-payroll-v1";
+const key = "nlng-payroll-v2";
+const legacyKey = "nlng-payroll-v1";
 const sessionKey = "nlng-payroll-session";
 function parseSession(raw: string | null): Session | null {
   if (!raw) return null;
@@ -44,12 +45,9 @@ function parseSession(raw: string | null): Session | null {
     return null;
   }
 }
-export function SimulationProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [state, setState] = useState<State>(() => seed("Clean baseline"));
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const today = currentDate();
+  const [state, setState] = useState<State>(() => seed(today));
   const current = useRef(state);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
@@ -59,6 +57,7 @@ export function SimulationProvider({
   useEffect(() => {
     try {
       setSession(parseSession(localStorage.getItem(sessionKey)));
+      localStorage.removeItem(legacyKey);
       const raw = localStorage.getItem(key);
       if (raw) {
         const saved = parseState(raw);
@@ -67,7 +66,7 @@ export function SimulationProvider({
           setState(saved);
         } else
           setMessage(
-            "Saved demo data could not be loaded. A clean baseline was restored.",
+            "Saved records could not be loaded. Starting records were restored.",
           );
       }
     } catch {
@@ -93,13 +92,15 @@ export function SimulationProvider({
   const act = useCallback(
     (action: Action): boolean => {
       try {
-        const next = transition(current.current, action, actor);
+        const next = transition(current.current, action, actor, currentDate());
         current.current = next;
         setState(next);
         setMessage(
           action.type === "processPayroll"
-            ? "Payroll processed. All payments are simulated."
-            : "Changes saved to the source records.",
+            ? "Payroll processed."
+            : action.type === "closePeriod"
+              ? "Payroll period closed. The next period is open."
+              : "Changes saved.",
         );
         return true;
       } catch (error) {
@@ -129,53 +130,21 @@ export function SimulationProvider({
   };
   const signOut = () => {
     saveSession(null);
-    setMessage("Signed out. Demo data is kept for the next persona.");
-  };
-  const reset = (scenario: Scenario) => {
-    const next = seed(scenario);
-    current.current = next;
-    setState(next);
-    setMessage(
-      `${scenario} loaded. Simulation restored to its starting state.`,
-    );
-  };
-  const exportData = () => {
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            schema: "nlng.payroll.source.v1",
-            exportedAt: new Date().toISOString(),
-            ...current.current,
-          },
-          null,
-          2,
-        ),
-      ],
-      { type: "application/json" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `nlng-payroll-${current.current.scenario.toLowerCase().replaceAll(" ", "-")}.json`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setMessage("Source data exported. External ingestion is not connected.");
+    setMessage("Signed out.");
   };
   return (
     <Context.Provider
       value={{
         state,
         actor,
+        today,
         ready,
         storageWarning,
         signedIn: session !== null,
         signIn,
         signOut,
         act,
-        reset,
         notify: setMessage,
-        exportData,
       }}
     >
       {children}
@@ -193,8 +162,8 @@ export function SimulationProvider({
     </Context.Provider>
   );
 }
-export function useSimulation(): ContextValue {
+export function useApp(): ContextValue {
   const context = useContext(Context);
-  if (!context) throw new Error("Simulation provider required");
+  if (!context) throw new Error("App provider required");
   return context;
 }

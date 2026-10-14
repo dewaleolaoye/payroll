@@ -1,11 +1,8 @@
 "use client";
 import { use } from "react";
 import Link from "next/link";
-import {
-  ArrowLeftIcon,
-  DownloadSimpleIcon,
-} from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { useApp } from "@/features/app/AppProvider";
 import {
   Badge,
   Empty,
@@ -19,13 +16,13 @@ export default function RunDetail({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { state, exportData } = useSimulation();
+  const { state } = useApp();
   const run = state.runs.find((r) => r.id === id);
   if (!run)
     return (
       <Empty
         title="Payroll run not found"
-        text="This run may belong to an earlier simulation. Open payroll to view current records."
+        text="This run doesn’t exist. Open payroll to view processed runs."
         href="/payroll"
         action="View payroll"
       />
@@ -37,18 +34,13 @@ export default function RunDetail({
         Payroll runs
       </Link>
       <PageHeading
-        eyebrow="PAYROLL SOURCE RECORD"
+        eyebrow="PAYROLL RUN"
         title={displayPeriod(run.period)}
         description={`${run.id} · Processed by ${run.processedBy} on ${displayDate(run.date)}`}
-      >
-        <button className="button secondary" onClick={exportData}>
-          <DownloadSimpleIcon size={14} />
-          Export source data
-        </button>
-      </PageHeading>
+      />
       <div className="notice">
         This run is complete. The salary and bank details below are snapshots
-        from processing time; source corrections affect future runs.
+        from processing time; later corrections affect future runs only.
       </div>
       <section className="surface">
         <div className="summary-band">
@@ -57,14 +49,14 @@ export default function RunDetail({
             <strong>{run.payments.length}</strong>
           </div>
           <div>
-            <small>Total simulated payments</small>
+            <small>Total payments</small>
             <strong>
               {currency(run.payments.reduce((sum, p) => sum + p.amount, 0))}
             </strong>
           </div>
           <div>
             <small>Payment status</small>
-            <Badge tone="green">Simulated paid</Badge>
+            <Badge tone="green">Paid</Badge>
           </div>
         </div>
         <div className="table-scroll">

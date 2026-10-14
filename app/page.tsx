@@ -10,23 +10,22 @@ import {
   ArrowUpRightIcon,
   CalendarDotsIcon,
   ShieldCheckIcon,
-  FileTextIcon,
 } from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
 import { Badge, EmployeeName, PageHeading } from "@/components/ui/primitives";
 import {
   currency,
   displayPeriod,
   displayDate,
-  period,
+  nextMonth,
 } from "@/lib/domain/model";
 import { eligibleEmployees } from "@/lib/domain/workflow";
 export default function Overview() {
-  const { state, actor } = useSimulation();
-  const eligible = eligibleEmployees(state);
+  const { state, actor, today } = useApp();
+  const eligible = eligibleEmployees(state, today);
   const pending = state.employees.filter((e) => e.approval === "Pending");
   const total = eligible.reduce((sum, e) => sum + e.salary, 0);
-  const run = state.runs.find((r) => r.period === period(state.date));
+  const run = state.runs.find((r) => r.period === state.period);
   return (
     <>
       <PageHeading
@@ -49,10 +48,10 @@ export default function Overview() {
             <CalendarDotsIcon size={13} />
             Current payroll cycle
           </div>
-          <h2>{displayPeriod(state.date)} payroll</h2>
+          <h2>{displayPeriod(state.period)} payroll</h2>
           <p>
             {run
-              ? "This period is complete. View the payment records or advance the simulation to start the next cycle."
+              ? `Payroll for ${displayPeriod(state.period)} is complete. A payroll lead can close the period to open ${displayPeriod(nextMonth(state.period + "-01"))}.`
               : "Review your workforce and prepare the next payroll run. Approved, eligible employees are included automatically."}
           </p>
         </div>
@@ -98,7 +97,7 @@ export default function Overview() {
           {
             label: "Recorded exits",
             value: state.exits.length.toString().padStart(2, "0"),
-            note: "Source records retained",
+            note: "Exit records kept",
             icon: SignOutIcon,
           },
         ].map((m) => (
@@ -176,7 +175,7 @@ export default function Overview() {
             {
               href: "/payroll",
               title: "Prepare monthly payroll",
-              text: `${displayPeriod(state.date)} · ${eligible.length} eligible employees`,
+              text: `${displayPeriod(state.period)} · ${eligible.length} eligible employees`,
               icon: WalletIcon,
             },
             {
@@ -184,12 +183,6 @@ export default function Overview() {
               title: "Manage employee exits",
               text: "Record exits and update payroll eligibility",
               icon: SignOutIcon,
-            },
-            {
-              href: "/simulation",
-              title: "Explore a scenario",
-              text: "Guided walkthroughs and source-data export",
-              icon: FileTextIcon,
             },
           ].map((t) => (
             <Link key={t.href} className="task" href={t.href}>
@@ -245,8 +238,8 @@ export default function Overview() {
       {state.events.length > 0 && (
         <section className="surface section-gap">
           <div className="section-head">
-            <h2>Recent source activity</h2>
-            <span className="count-note">Simulation clock</span>
+            <h2>Recent activity</h2>
+            <span className="count-note">Latest first</span>
           </div>
           <div className="timeline">
             {state.events

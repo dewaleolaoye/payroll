@@ -9,10 +9,7 @@ export default function ErrorPage({
   return (
     <section className="surface empty">
       <h3>This screen could not be loaded</h3>
-      <p>
-        Your simulation records remain in local storage. Try again or return to
-        the overview.
-      </p>
+      <p>Your records are still saved. Try again or return to the overview.</p>
       <div className="flex justify-center gap-3">
         <button className="button" onClick={retry}>
           Try again

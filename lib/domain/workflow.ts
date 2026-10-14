@@ -2,13 +2,13 @@ import {
   Actor,
   Employee,
   PayrollRun,
-  Scenario,
   SourceEvent,
   State,
   period,
   nextMonth,
   departments,
   banks,
+  displayPeriod,
 } from "./model";
 export type Action =
   | { type: "saveHire"; employee: Employee; submit: boolean }
@@ -30,7 +30,6 @@ export type Action =
       id: string;
       lastWorkingDate: string;
       reason: string;
-      delayed: boolean;
     }
   | { type: "correctEligibility"; id: string; reason: string }
   | {
@@ -41,36 +40,42 @@ export type Action =
       reason: string;
     }
   | { type: "processPayroll" }
-  | { type: "advancePeriod" };
+  | { type: "closePeriod" };
 function fail(message: string): never {
   throw new Error(message);
 }
 function requireRole(actor: Actor, allowed: Actor["role"][]): void {
   if (!allowed.includes(actor.role))
-    fail(`Switch to ${allowed.join(" or ")} to perform this action.`);
+    fail(`Only ${allowed.join(" or ")} can perform this action.`);
 }
 function event(
   state: State,
   actor: Actor,
+  today: string,
   action: string,
   subjectId: string,
   note: string,
 ): SourceEvent {
   return {
     id: `EVT-${String(state.events.length + 1).padStart(4, "0")}`,
-    timestamp: state.date,
+    timestamp: today,
     actor: actor.name,
     action,
     subjectId,
     note,
   };
 }
-export function eligibleEmployees(state: State): Employee[] {
+export function eligibleEmployees(state: State, today: string): Employee[] {
   return state.employees.filter(
-    (e) => e.approval === "Approved" && e.eligible && e.startDate <= state.date,
+    (e) => e.approval === "Approved" && e.eligible && e.startDate <= today,
   );
 }
-export function transition(state: State, action: Action, actor: Actor): State {
+export function transition(
+  state: State,
+  action: Action,
+  actor: Actor,
+  today: string,
+): State {
   const employee =
     "id" in action
       ? state.employees.find((e) => e.id === action.id)
@@ -79,7 +84,10 @@ export function transition(state: State, action: Action, actor: Actor): State {
   const change = (updated: Employee, title: string, note: string): State => ({
     ...state,
     employees: state.employees.map((e) => (e.id === updated.id ? updated : e)),
-    events: [...state.events, event(state, actor, title, updated.id, note)],
+    events: [
+      ...state.events,
+      event(state, actor, today, title, updated.id, note),
+    ],
   });
   switch (action.type) {
     case "editHire":
@@ -149,6 +157,7 @@ export function transition(state: State, action: Action, actor: Actor): State {
           event(
             state,
             actor,
+            today,
             action.submit ? "Hire submitted" : "Draft saved",
             e.id,
             "Approved requisition: " + e.requisition,
@@ -199,23 +208,21 @@ export function transition(state: State, action: Action, actor: Actor): State {
         fail("Approve the hire before processing an exit.");
       if (
         !action.reason.trim() ||
-        action.lastWorkingDate > state.date ||
+        action.lastWorkingDate > today ||
         action.lastWorkingDate < employee!.startDate
       )
         fail(
-          "Provide a reason and a last working date between the start date and simulation date.",
+          "Provide a reason and a last working date between the start date and today.",
         );
       const updated = change(
         {
           ...employee!,
           employment: "Exited",
-          eligible: action.delayed ? employee!.eligible : false,
+          eligible: false,
           lastActivity: action.lastWorkingDate,
         },
         "Exit recorded",
-        action.delayed
-          ? "Simulated delayed synchronization: payroll eligibility remains active."
-          : "Payroll eligibility deactivated.",
+        "Payroll eligibility deactivated.",
       );
       return {
         ...updated,
@@ -226,9 +233,8 @@ export function transition(state: State, action: Action, actor: Actor): State {
             employeeId: employee!.id,
             lastWorkingDate: action.lastWorkingDate,
             reason: action.reason,
-            processedDate: state.date,
+            processedDate: today,
             processedBy: actor.name,
-            delayed: action.delayed,
           },
         ],
       };
@@ -257,18 +263,19 @@ export function transition(state: State, action: Action, actor: Actor): State {
       );
     case "processPayroll": {
       requireRole(actor, ["Payroll Processor"]);
-      if (state.runs.some((run) => run.period === period(state.date)))
+      if (state.runs.some((run) => run.period === state.period))
         fail(
-          "This period has already been processed. Advance to the next period.",
+          "This period has already been processed. A payroll lead can close it to open the next period.",
         );
-      const eligible = eligibleEmployees(state);
+      if (state.period > period(today)) fail("This period hasn't started yet.");
+      const eligible = eligibleEmployees(state, today);
       if (!eligible.length)
         fail("No approved employees are eligible for this period.");
-      const id = `RUN-${period(state.date).replace("-", "")}`;
+      const id = `RUN-${state.period.replace("-", "")}`;
       const run: PayrollRun = {
         id,
-        period: period(state.date),
-        date: state.date,
+        period: state.period,
+        date: today,
         processedBy: actor.name,
         excludedIds: state.employees
           .filter((e) => !eligible.some((p) => p.id === e.id))
@@ -280,8 +287,8 @@ export function transition(state: State, action: Action, actor: Actor): State {
           amount: e.salary,
           bank: e.bank,
           account: e.account,
-          paymentDate: state.date,
-          status: "Simulated paid",
+          paymentDate: today,
+          status: "Paid",
         })),
       };
       return {
@@ -292,31 +299,38 @@ export function transition(state: State, action: Action, actor: Actor): State {
           event(
             state,
             actor,
+            today,
             "Payroll processed",
             id,
-            `${eligible.length} simulated payments. No funds transferred.`,
+            `${eligible.length} payments for ${displayPeriod(state.period)}.`,
           ),
         ],
       };
     }
-    case "advancePeriod":
+    case "closePeriod": {
+      requireRole(actor, ["HR/Payroll Lead"]);
+      if (!state.runs.some((run) => run.period === state.period))
+        fail("Process payroll for this period before closing it.");
+      const next = period(nextMonth(state.period + "-01"));
       return {
         ...state,
-        date: nextMonth(state.date),
+        period: next,
         events: [
           ...state.events,
           event(
             state,
             actor,
-            "Simulation period advanced",
-            "DEMO",
-            nextMonth(state.date),
+            today,
+            "Payroll period closed",
+            state.period,
+            `${displayPeriod(next)} is now open.`,
           ),
         ],
       };
+    }
   }
 }
-export function seed(scenario: Scenario): State {
+export function seed(today: string): State {
   const names = [
     "Emeka Nwosu",
     "Blessing Hart",
@@ -355,56 +369,16 @@ export function seed(scenario: Scenario): State {
     approval: "Approved",
     createdBy: "HR-001",
     approverId: "HR-002",
-    lastActivity: "2026-10-10",
+    lastActivity: null,
   }));
-  let state: State = {
-    version: 1,
-    scenario,
-    date: "2026-10-12",
+  return {
+    version: 2,
+    period: period(today),
     employees,
     exits: [],
     runs: [],
     events: [],
   };
-  if (scenario === "Seeded fallback") {
-    const officer: Actor = {
-      id: "HR-001",
-      name: "Chukwudi Okafor",
-      role: "HR Officer",
-      initials: "CO",
-    };
-    state = transition(
-      { ...state, date: "2026-07-21" },
-      {
-        type: "exit",
-        id: "EMP-001",
-        lastWorkingDate: "2026-07-20",
-        reason: "Contract assignment completed",
-        delayed: true,
-      },
-      officer,
-    );
-    state.employees[2] = {
-      ...state.employees[2],
-      bank: employees[1].bank,
-      account: employees[1].account,
-    };
-    state.employees[3] = { ...state.employees[3], lastActivity: "2026-07-15" };
-    for (const date of ["2026-08-28", "2026-09-28", "2026-10-12"]) {
-      state = transition(
-        { ...state, date },
-        { type: "processPayroll" },
-        {
-          id: "PAY-001",
-          name: "Tunde Bakare",
-          role: "Payroll Processor",
-          initials: "TB",
-        },
-      );
-    }
-    state.date = "2026-10-12";
-  }
-  return state;
 }
 function isEmployee(value: unknown): value is Employee {
   if (!value || typeof value !== "object") return false;
@@ -443,31 +417,24 @@ export function parseState(raw: string): State | null {
       typeof v === "object" &&
       keys.every((k) => typeof (v as Record<string, unknown>)[k] === "string");
     if (
-      s.version !== 1 ||
-      ![
-        "Clean baseline",
-        "Ghost worker",
-        "Shared account",
-        "Seeded fallback",
-      ].includes(String(s.scenario)) ||
-      typeof s.date !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(s.date)
+      s.version !== 2 ||
+      typeof s.period !== "string" ||
+      !/^\d{4}-\d{2}$/.test(s.period)
     )
       return null;
     if (
       !Array.isArray(s.employees) ||
       !s.employees.every(isEmployee) ||
       !Array.isArray(s.exits) ||
-      !s.exits.every(
-        (e) =>
-          strings(e, [
-            "id",
-            "employeeId",
-            "lastWorkingDate",
-            "reason",
-            "processedDate",
-            "processedBy",
-          ]) && typeof e.delayed === "boolean",
+      !s.exits.every((e) =>
+        strings(e, [
+          "id",
+          "employeeId",
+          "lastWorkingDate",
+          "reason",
+          "processedDate",
+          "processedBy",
+        ]),
       )
     )
       return null;
@@ -498,7 +465,7 @@ export function parseState(raw: string): State | null {
               ]) &&
               typeof (p as Record<string, unknown>).amount === "number" &&
               Number.isFinite((p as Record<string, unknown>).amount) &&
-              (p as Record<string, unknown>).status === "Simulated paid",
+              (p as Record<string, unknown>).status === "Paid",
           ),
       )
     )

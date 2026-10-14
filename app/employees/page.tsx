@@ -5,9 +5,8 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   ArrowUpRightIcon,
-  DownloadSimpleIcon,
 } from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
 import {
   Badge,
   Empty,
@@ -16,7 +15,7 @@ import {
 } from "@/components/ui/primitives";
 import { departments } from "@/lib/domain/model";
 export default function Employees() {
-  const { state, exportData } = useSimulation();
+  const { state } = useApp();
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("");
   const [status, setStatus] = useState("");
@@ -40,10 +39,6 @@ export default function Employees() {
         title="Employees"
         description="Manage employee records from onboarding through their final payroll."
       >
-        <button className="button secondary" onClick={exportData}>
-          <DownloadSimpleIcon size={15} />
-          Export source data
-        </button>
         <Link href="/employees/new" className="button">
           <PlusIcon size={15} />
           New hire
@@ -159,8 +154,7 @@ export default function Employees() {
           />
         )}
         <div className="table-foot">
-          Showing {rows.length} of {state.employees.length} employees · All
-          records are synthetic
+          Showing {rows.length} of {state.employees.length} employees
         </div>
       </section>
     </>

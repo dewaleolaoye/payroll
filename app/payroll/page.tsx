@@ -6,11 +6,10 @@ import {
   ArrowRightIcon,
   PlayIcon,
   CalendarDotsIcon,
-  DownloadSimpleIcon,
   ArrowUpRightIcon,
   WalletIcon,
 } from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
 import {
   Badge,
   Empty,
@@ -22,45 +21,57 @@ import {
   currency,
   displayDate,
   displayPeriod,
-  period,
+  nextMonth,
 } from "@/lib/domain/model";
 import { eligibleEmployees } from "@/lib/domain/workflow";
 export default function Payroll() {
-  const { state, actor, act, exportData } = useSimulation();
+  const { state, actor, act, today } = useApp();
   const router = useRouter();
   const [tab, setTab] = useState("Included");
   const [confirm, setConfirm] = useState(false);
-  const [advance, setAdvance] = useState(false);
-  const eligible = eligibleEmployees(state);
+  const [closing, setClosing] = useState(false);
+  const eligible = eligibleEmployees(state, today);
   const excluded = state.employees.filter(
     (e) => !eligible.some((p) => p.id === e.id),
   );
   const total = eligible.reduce((sum, e) => sum + e.salary, 0);
-  const run = state.runs.find((r) => r.period === period(state.date));
+  const run = state.runs.find((r) => r.period === state.period);
   const rows = tab === "Included" ? eligible : excluded;
+  const nextPeriod = displayPeriod(nextMonth(state.period + "-01"));
+  const isLead = actor.role === "HR/Payroll Lead";
+  // Closing a period opens the next month early; it can't be processed until that month starts.
+  const opensOn = state.period + "-01";
+  const notStarted = state.period > today.slice(0, 7);
   return (
     <>
       <PageHeading
         eyebrow="MONTHLY PAYROLL"
         title="Payroll runs"
-        description="Preview the population, process simulated payments, and retain the source evidence."
+        description="Preview who will be paid, process the period, and keep a record of every run."
       >
-        <button className="button secondary" onClick={exportData}>
-          <DownloadSimpleIcon size={14} />
-          Export data
-        </button>
-        <button className="button secondary" onClick={() => setAdvance(true)}>
-          <CalendarDotsIcon size={14} />
-          Next period
-        </button>
+        {isLead && (
+          <button
+            className="button secondary"
+            disabled={!run}
+            title={
+              run ? undefined : "Process payroll before closing the period"
+            }
+            onClick={() => setClosing(true)}
+          >
+            <CalendarDotsIcon size={14} />
+            Close period
+          </button>
+        )}
       </PageHeading>
       <section className="surface">
         <div className="section-head">
           <div>
-            <h2>{displayPeriod(state.date)}</h2>
+            <h2>{displayPeriod(state.period)}</h2>
             <p>
-              Payments dated {displayDate(state.date)} · based on source payroll
-              eligibility
+              {notStarted
+                ? `Opens for processing on ${displayDate(opensOn)}`
+                : `Payments dated ${displayDate(run ? run.date : today)}`}{" "}
+              · based on payroll eligibility
             </p>
           </div>
           <Badge tone={run ? "green" : "amber"}>
@@ -78,7 +89,7 @@ export default function Payroll() {
           </div>
           <div>
             <small>
-              {run ? "Current source estimate" : "Estimated payment total"}
+              {run ? "Current estimate" : "Estimated payment total"}
             </small>
             <strong>{currency(total)}</strong>
           </div>
@@ -88,8 +99,8 @@ export default function Payroll() {
         <div className="notice section-gap">
           <WalletIcon size={16} />
           <div className="flex-1">
-            This period has already been processed. Historical payment values
-            are preserved independently of current source records.
+            This period has been processed. A payroll lead can close it to open{" "}
+            {nextPeriod}. Payment values are kept as processed.
           </div>
           <Link href={`/payroll/${run.id}`} className="text-link">
             View processed run
@@ -98,14 +109,15 @@ export default function Payroll() {
         </div>
       ) : (
         <div className="notice section-gap">
-          Only approved, payroll-eligible employees whose start date has been
-          reached are included. Payroll uses eligibility as recorded by HR.
+          {notStarted
+            ? `${displayPeriod(state.period)} is open but can’t be processed until ${displayDate(opensOn)}. The preview below uses current employee records.`
+            : "Only approved, payroll-eligible employees whose start date has been reached are included. Payroll uses eligibility as recorded by HR."}
         </div>
       )}
       <section className="surface">
         <div className="section-head">
           <h2>Payroll preview</h2>
-          <span className="count-note">Current source records</span>
+          <span className="count-note">Current employee records</span>
         </div>
         <div className="tabs" style={{ margin: "18px 22px 0" }}>
           <button
@@ -155,7 +167,7 @@ export default function Payroll() {
                       <Badge>
                         {e.approval !== "Approved"
                           ? `Hire ${e.approval.toLowerCase()}`
-                          : e.startDate > state.date
+                          : e.startDate > today
                             ? "Future start date"
                             : "Inactive eligibility"}
                       </Badge>
@@ -181,22 +193,28 @@ export default function Payroll() {
         {!run && (
           <div className="form-actions">
             <span className="count-note mr-auto self-center">
-              No funds are transferred.
+              {notStarted
+                ? `Processing opens on ${displayDate(opensOn)}.`
+                : `Payments will be dated ${displayDate(today)}.`}
             </span>
             <button
               className="button"
-              disabled={actor.role !== "Payroll Processor" || !eligible.length}
+              disabled={
+                actor.role !== "Payroll Processor" ||
+                !eligible.length ||
+                notStarted
+              }
               onClick={() => setConfirm(true)}
             >
               <PlayIcon size={14} />
-              Process simulated payroll
+              Process payroll
             </button>
           </div>
         )}
       </section>
       {actor.role !== "Payroll Processor" && !run && (
         <p className="count-note mt-3">
-          Sign in as Tunde Bakare · Payroll Processor to process this period.
+          Only a Payroll Processor can process this period.
         </p>
       )}
       <section className="surface section-gap">
@@ -212,7 +230,7 @@ export default function Payroll() {
                   <th>Run ID</th>
                   <th>Period</th>
                   <th>Employees paid</th>
-                  <th>Total simulated payments</th>
+                  <th>Total payments</th>
                   <th>Processed by</th>
                   <th />
                 </tr>
@@ -246,21 +264,21 @@ export default function Payroll() {
         ) : (
           <Empty
             title="No payroll runs yet"
-            text="Process the current period to create your first simulated payroll run."
+            text="Process the current period to create your first payroll run."
           />
         )}
       </section>
       {confirm && (
         <Modal
-          title="Process simulated payroll?"
-          description={`${displayPeriod(state.date)} · ${eligible.length} employees · ${currency(total)}`}
+          title="Process payroll?"
+          description={`${displayPeriod(state.period)} · ${eligible.length} employees · ${currency(total)}`}
           onClose={() => setConfirm(false)}
         >
           <div className="modal-body">
             <div className="notice" style={{ margin: 0 }}>
-              This creates a permanent snapshot of payment rows for this
-              simulation period. It does not send money, post to a ledger, or
-              connect to a bank.
+              This creates a permanent record of payment rows for{" "}
+              {displayPeriod(state.period)}, dated {displayDate(today)}. It
+              can’t be processed again for this period.
             </div>
           </div>
           <div className="modal-actions">
@@ -275,9 +293,7 @@ export default function Payroll() {
               onClick={() => {
                 if (act({ type: "processPayroll" })) {
                   setConfirm(false);
-                  router.push(
-                    `/payroll/RUN-${period(state.date).replace("-", "")}`,
-                  );
+                  router.push(`/payroll/RUN-${state.period.replace("-", "")}`);
                 }
               }}
             >
@@ -286,26 +302,26 @@ export default function Payroll() {
           </div>
         </Modal>
       )}
-      {advance && (
+      {closing && (
         <Modal
-          title="Advance simulation period?"
-          description="The simulation clock will move to the first day of the next month. Existing source records and payroll history are retained."
-          onClose={() => setAdvance(false)}
+          title={`Close ${displayPeriod(state.period)}?`}
+          description={`This closes the period and opens ${nextPeriod} for payroll. Processed runs and employee records are kept.`}
+          onClose={() => setClosing(false)}
         >
           <div className="modal-actions">
             <button
               className="button secondary"
-              onClick={() => setAdvance(false)}
+              onClick={() => setClosing(false)}
             >
               Cancel
             </button>
             <button
               className="button"
               onClick={() => {
-                if (act({ type: "advancePeriod" })) setAdvance(false);
+                if (act({ type: "closePeriod" })) setClosing(false);
               }}
             >
-              Advance period
+              Close period
             </button>
           </div>
         </Modal>

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useState } from "react";
 import { Employee, banks, currency } from "@/lib/domain/model";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
 import { Modal } from "@/components/ui/primitives";
 export function ExitDialog({
   employee,
@@ -10,17 +10,9 @@ export function ExitDialog({
   employee: Employee;
   onClose: () => void;
 }) {
-  const { state, act } = useSimulation();
-  const [date, setDate] = useState(() => {
-    if (state.scenario !== "Ghost worker") return state.date;
-    const previous = new Date(state.date + "T12:00:00Z");
-    previous.setUTCDate(previous.getUTCDate() - 1);
-    return previous.toISOString().slice(0, 10) < employee.startDate
-      ? employee.startDate
-      : previous.toISOString().slice(0, 10);
-  });
-  const [reason, setReason] = useState("Contract assignment completed");
-  const delayed = state.scenario === "Ghost worker";
+  const { act, today } = useApp();
+  const [date, setDate] = useState(today);
+  const [reason, setReason] = useState("");
   const close = useCallback(onClose, [onClose]);
   return (
     <Modal
@@ -37,7 +29,6 @@ export function ExitDialog({
               id: employee.id,
               lastWorkingDate: date,
               reason,
-              delayed,
             })
           )
             onClose();
@@ -50,7 +41,7 @@ export function ExitDialog({
               required
               type="date"
               min={employee.startDate}
-              max={state.date}
+              max={today}
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
@@ -63,13 +54,9 @@ export function ExitDialog({
               onChange={(e) => setReason(e.target.value)}
             />
           </label>
-          <div
-            className={`notice ${delayed ? "amber" : ""}`}
-            style={{ marginBottom: 0 }}
-          >
-            {delayed
-              ? "Ghost-worker scenario is active: this exit will be recorded in HR while payroll eligibility remains Active, simulating delayed synchronization."
-              : "Recording the exit will deactivate payroll eligibility. The employee will be excluded from the next payroll run."}
+          <div className="notice" style={{ marginBottom: 0 }}>
+            Recording the exit will deactivate payroll eligibility. The employee
+            will be excluded from the next payroll run.
           </div>
         </div>
         <div className="modal-actions">
@@ -89,7 +76,7 @@ export function BankDialog({
   employee: Employee;
   onClose: () => void;
 }) {
-  const { act } = useSimulation();
+  const { act } = useApp();
   const [bank, setBank] = useState(employee.bank);
   const [account, setAccount] = useState(employee.account);
   const [reason, setReason] = useState("");
@@ -155,7 +142,7 @@ export function CorrectionDialog({
   employee: Employee;
   onClose: () => void;
 }) {
-  const { act } = useSimulation();
+  const { act } = useApp();
   const [reason, setReason] = useState("");
   return (
     <Modal
@@ -181,8 +168,8 @@ export function CorrectionDialog({
             />
           </label>
           <div className="notice" style={{ marginBottom: 0 }}>
-            Monthly salary: {currency(employee.salary)}. This action changes the
-            source employee record only.
+            Monthly salary: {currency(employee.salary)}. This changes the
+            employee record only; processed runs keep their original details.
           </div>
         </div>
         <div className="modal-actions">
@@ -202,7 +189,7 @@ export function HireEditDialog({
   employee: Employee;
   onClose: () => void;
 }) {
-  const { act } = useSimulation();
+  const { act } = useApp();
   const [values, setValues] = useState({
     name: employee.name,
     job: employee.job,

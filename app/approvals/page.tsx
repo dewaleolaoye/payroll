@@ -6,11 +6,11 @@ import {
   ArrowUUpLeftIcon,
   ArrowUpRightIcon,
 } from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
 import { Badge, Empty, Modal, PageHeading } from "@/components/ui/primitives";
 import { currency, displayDate } from "@/lib/domain/model";
 export default function Approvals() {
-  const { state, actor, act } = useSimulation();
+  const { state, actor, act } = useApp();
   const pending = state.employees.filter((e) => e.approval === "Pending");
   const [selected, setSelected] = useState("");
   const [returning, setReturning] = useState(false);
@@ -26,13 +26,13 @@ export default function Approvals() {
       <div className="notice">
         {actor.role === "HR Approver"
           ? "You are reviewing as the second HR approver. Approval activates payroll eligibility."
-          : "Sign in as Amina Yusuf · HR Approver to approve or return a hire."}
+          : "Only an HR Approver can approve or return a hire."}
       </div>
       {!pending.length ? (
         <section className="surface">
           <Empty
             title="All caught up"
-            text="There are no pending hires. Create and submit a new hire to demonstrate independent approval."
+            text="There are no pending hires. Hires submitted by HR will appear here for independent approval."
             href="/employees/new"
             action="Create a hire"
           />
@@ -68,7 +68,7 @@ export default function Approvals() {
                 </p>
               </div>
               <Link href={`/employees/${e.id}`} className="text-link">
-                Source record
+                Employee record
                 <ArrowUpRightIcon size={14} />
               </Link>
             </div>

@@ -6,13 +6,12 @@ import {
   ArrowLeftIcon,
   PaperPlaneTiltIcon,
   ShieldCheckIcon,
-  CopyIcon,
 } from "@phosphor-icons/react";
-import { useSimulation } from "@/features/simulation/SimulationProvider";
+import { useApp } from "@/features/app/AppProvider";
 import { Employee, banks, departments } from "@/lib/domain/model";
 import { PageHeading } from "@/components/ui/primitives";
 export default function NewHire() {
-  const { state, actor, act } = useSimulation();
+  const { state, actor, act, today } = useApp();
   const router = useRouter();
   const [draft, setDraft] = useState({
     name: "",
@@ -21,7 +20,7 @@ export default function NewHire() {
     bank: "Zenith Bank",
     account: "",
     taxId: "",
-    startDate: state.date,
+    startDate: today,
     manager: "",
     requisition: "",
     salary: "450000",
@@ -47,24 +46,6 @@ export default function NewHire() {
     if (act({ type: "saveHire", employee, submit: submitted }))
       router.push(`/employees/${employee.id}`);
   };
-  const fillShared = () => {
-    const e = state.employees.find(
-      (e) => e.approval === "Approved" && e.eligible,
-    );
-    if (e)
-      setDraft({
-        name: "Daniel Okoro",
-        department: "Maintenance",
-        job: "Contract Technician",
-        bank: e.bank,
-        account: e.account,
-        taxId: "TIN-DEMO-9001",
-        startDate: state.date,
-        manager: "Michael Brown",
-        requisition: "HC-2026-091",
-        salary: "480000",
-      });
-  };
   return (
     <>
       <Link href="/employees" className="back-link">
@@ -78,19 +59,7 @@ export default function NewHire() {
       />
       {actor.role !== "HR Officer" && (
         <div className="notice amber">
-          Switch to HR Officer using the actor menu to create a hire.
-        </div>
-      )}
-      {state.scenario === "Shared account" && (
-        <div className="notice amber">
-          <div className="flex-1">
-            Shared-account walkthrough: use an existing employee’s account to
-            recreate the source-system deviation.
-          </div>
-          <button className="text-link" onClick={fillShared}>
-            <CopyIcon size={14} />
-            Fill demo example
-          </button>
+          Only an HR Officer can create a hire.
         </div>
       )}
       <div className="form-layout">
@@ -103,7 +72,7 @@ export default function NewHire() {
         >
           <section className="form-section">
             <h2>Employee information</h2>
-            <p>All fields are required. Use synthetic details only.</p>
+            <p>All fields are required.</p>
             <div className="form-grid">
               <label>
                 Full name
@@ -169,10 +138,7 @@ export default function NewHire() {
           </section>
           <section className="form-section">
             <h2>Payroll & bank details</h2>
-            <p>
-              Demo bank details are stored as source data, with no connection to
-              banking services.
-            </p>
+            <p>Salary payments are made to this account.</p>
             <div className="form-grid">
               <label>
                 Bank name
@@ -194,7 +160,7 @@ export default function NewHire() {
                   maxLength={10}
                   value={draft.account}
                   onChange={(e) => field("account", e.target.value)}
-                  placeholder="10-digit synthetic account"
+                  placeholder="10-digit account number"
                 />
               </label>
               <label>
@@ -203,7 +169,7 @@ export default function NewHire() {
                   required
                   value={draft.taxId}
                   onChange={(e) => field("taxId", e.target.value)}
-                  placeholder="e.g. TIN-DEMO-1001"
+                  placeholder="e.g. TIN-1001"
                 />
               </label>
               <label>
