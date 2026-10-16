@@ -1,9 +1,17 @@
 "use client";
-import { useEffect, useRef } from "react";
-import { XIcon, ArrowRightIcon, TrayIcon } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import {
+  XIcon,
+  ArrowRightIcon,
+  TrayIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+} from "@phosphor-icons/react";
 import Link from "next/link";
+import { useSetPageHeader } from "@/components/layout/PageHeader";
+// The title and description render in the shell's top bar; only the actions
+// render in place. `eyebrow` is accepted for existing callers but not shown.
 export function PageHeading({
-  eyebrow,
   title,
   description,
   children,
@@ -13,14 +21,79 @@ export function PageHeading({
   description: string;
   children?: React.ReactNode;
 }) {
+  const setHeader = useSetPageHeader();
+  useEffect(() => {
+    setHeader({ title, description });
+    return () => setHeader(null);
+  }, [setHeader, title, description]);
+  return children ? <div className="page-actions">{children}</div> : null;
+}
+export const PAGE_SIZE = 10;
+// Returns to page 1 whenever `resetKey` changes (e.g. a new search or tab).
+export function usePagination<T>(rows: T[], resetKey = "") {
+  const [state, setState] = useState({ page: 1, key: resetKey });
+  if (state.key !== resetKey) setState({ page: 1, key: resetKey });
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const page = Math.min(state.key === resetKey ? state.page : 1, pageCount);
+  return {
+    page,
+    pageCount,
+    total: rows.length,
+    pageRows: rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    setPage: (p: number) => setState({ page: p, key: resetKey }),
+  };
+}
+export function Pagination({
+  page,
+  pageCount,
+  total,
+  setPage,
+  noun = "records",
+}: {
+  page: number;
+  pageCount: number;
+  total: number;
+  setPage: (page: number) => void;
+  noun?: string;
+}) {
+  if (!total) return null;
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, total);
   return (
-    <div className="page-heading">
-      <div>
-        {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </div>
-      <div className="heading-actions">{children}</div>
+    <div className="table-foot pagination">
+      <span>
+        Showing {from}–{to} of {total} {noun}
+      </span>
+      {pageCount > 1 && (
+        <nav aria-label="Pagination">
+          <button
+            className="icon-button"
+            aria-label="Previous page"
+            disabled={page === 1}
+            onClick={() => setPage(page - 1)}
+          >
+            <CaretLeftIcon size={14} />
+          </button>
+          {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+            <button
+              key={p}
+              className={p === page ? "active" : ""}
+              aria-current={p === page ? "page" : undefined}
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            className="icon-button"
+            aria-label="Next page"
+            disabled={page === pageCount}
+            onClick={() => setPage(page + 1)}
+          >
+            <CaretRightIcon size={14} />
+          </button>
+        </nav>
+      )}
     </div>
   );
 }

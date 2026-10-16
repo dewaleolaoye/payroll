@@ -9,7 +9,13 @@ import {
   PaperPlaneTiltIcon,
 } from "@phosphor-icons/react";
 import { useApp } from "@/features/app/AppProvider";
-import { Badge, Empty, PageHeading } from "@/components/ui/primitives";
+import {
+  Badge,
+  Empty,
+  PageHeading,
+  Pagination,
+  usePagination,
+} from "@/components/ui/primitives";
 import { currency, displayDate, displayPeriod } from "@/lib/domain/model";
 import {
   BankDialog,
@@ -29,6 +35,12 @@ export default function EmployeeDetail({
     "exit" | "bank" | "correct" | "hire" | null
   >(null);
   const e = state.employees.find((e) => e.id === id);
+  const payments = state.runs.flatMap((r) =>
+    r.payments
+      .filter((p) => p.employeeId === id)
+      .map((p) => ({ ...p, runId: r.id, period: r.period })),
+  );
+  const pager = usePagination(payments);
   if (!e)
     return (
       <Empty
@@ -39,11 +51,6 @@ export default function EmployeeDetail({
       />
     );
   const exits = state.exits.filter((x) => x.employeeId === id);
-  const payments = state.runs.flatMap((r) =>
-    r.payments
-      .filter((p) => p.employeeId === id)
-      .map((p) => ({ ...p, runId: r.id, period: r.period })),
-  );
   const canEdit =
     actor.role === "HR Officer" || actor.role === "HR/Payroll Lead";
   const fields =
@@ -239,44 +246,47 @@ export default function EmployeeDetail({
             <span className="count-note">{payments.length} payments</span>
           </div>
           {payments.length ? (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Period</th>
-                    <th>Amount paid</th>
-                    <th>Bank / account used</th>
-                    <th>Payment date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.map((p) => (
-                    <tr key={p.id}>
-                      <td>
-                        <Link
-                          className="text-link"
-                          href={`/payroll/${p.runId}`}
-                        >
-                          {displayPeriod(p.period)} ↗
-                        </Link>
-                      </td>
-                      <td>{currency(p.amount)}</td>
-                      <td>
-                        {p.bank}
-                        <span className="block mono text-muted mt-1">
-                          {p.account}
-                        </span>
-                      </td>
-                      <td>{displayDate(p.paymentDate)}</td>
-                      <td>
-                        <Badge tone="green">{p.status}</Badge>
-                      </td>
+            <>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Period</th>
+                      <th>Amount paid</th>
+                      <th>Bank / account used</th>
+                      <th>Payment date</th>
+                      <th>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {pager.pageRows.map((p) => (
+                      <tr key={p.id}>
+                        <td>
+                          <Link
+                            className="text-link"
+                            href={`/payroll/${p.runId}`}
+                          >
+                            {displayPeriod(p.period)} ↗
+                          </Link>
+                        </td>
+                        <td>{currency(p.amount)}</td>
+                        <td>
+                          {p.bank}
+                          <span className="block mono text-muted mt-1">
+                            {p.account}
+                          </span>
+                        </td>
+                        <td>{displayDate(p.paymentDate)}</td>
+                        <td>
+                          <Badge tone="green">{p.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination {...pager} noun="payments" />
+            </>
           ) : (
             <Empty
               title="No payments recorded"

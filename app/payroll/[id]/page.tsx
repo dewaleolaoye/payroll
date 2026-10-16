@@ -8,6 +8,8 @@ import {
   Empty,
   EmployeeName,
   PageHeading,
+  Pagination,
+  usePagination,
 } from "@/components/ui/primitives";
 import { currency, displayDate, displayPeriod } from "@/lib/domain/model";
 export default function RunDetail({
@@ -18,6 +20,7 @@ export default function RunDetail({
   const { id } = use(params);
   const { state } = useApp();
   const run = state.runs.find((r) => r.id === id);
+  const pager = usePagination(run?.payments ?? []);
   if (!run)
     return (
       <Empty
@@ -71,7 +74,7 @@ export default function RunDetail({
               </tr>
             </thead>
             <tbody>
-              {run.payments.map((p) => (
+              {pager.pageRows.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <EmployeeName name={p.employeeName} id={p.employeeId} />
@@ -90,6 +93,7 @@ export default function RunDetail({
             </tbody>
           </table>
         </div>
+        <Pagination {...pager} noun="payments" />
         <div className="table-foot">
           {run.excludedIds.length} excluded employees at processing time
           {run.excludedIds.length > 0 && (

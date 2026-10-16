@@ -1,17 +1,15 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import {
-  MagnifyingGlassIcon,
-  PlusIcon,
-  ArrowUpRightIcon,
-} from "@phosphor-icons/react";
+import { MagnifyingGlassIcon, PlusIcon } from "@phosphor-icons/react";
 import { useApp } from "@/features/app/AppProvider";
 import {
   Badge,
   Empty,
   EmployeeName,
   PageHeading,
+  Pagination,
+  usePagination,
 } from "@/components/ui/primitives";
 import { departments } from "@/lib/domain/model";
 export default function Employees() {
@@ -25,13 +23,9 @@ export default function Employees() {
         .toLowerCase()
         .includes(search.toLowerCase()) &&
       (!department || e.department === department) &&
-      (!status ||
-        (status === "Eligible"
-          ? e.eligible
-          : status === "Inactive"
-            ? !e.eligible
-            : status === e.employment || status === e.approval)),
+      (!status || status === e.employment),
   );
+  const pager = usePagination(rows, `${search}|${department}|${status}`);
   return (
     <>
       <PageHeading
@@ -71,15 +65,7 @@ export default function Employees() {
             onChange={(e) => setStatus(e.target.value)}
           >
             <option value="">All statuses</option>
-            {[
-              "Employed",
-              "Exited",
-              "Pending",
-              "Draft",
-              "Returned",
-              "Eligible",
-              "Inactive",
-            ].map((s) => (
+            {["Employed", "Exited"].map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>
@@ -90,14 +76,12 @@ export default function Employees() {
               <tr>
                 <th>Employee</th>
                 <th>Department / role</th>
-                <th>Approval</th>
-                <th>HR status</th>
-                <th>Payroll eligibility</th>
+                <th>Status</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {rows.map((e) => (
+              {pager.pageRows.map((e) => (
                 <tr key={e.id}>
                   <td>
                     <EmployeeName name={e.name} id={e.id} />
@@ -110,36 +94,18 @@ export default function Employees() {
                   </td>
                   <td>
                     <Badge
-                      tone={
-                        e.approval === "Approved"
-                          ? "green"
-                          : e.approval === "Pending"
-                            ? "amber"
-                            : "neutral"
-                      }
-                    >
-                      {e.approval}
-                    </Badge>
-                  </td>
-                  <td>
-                    <Badge
                       tone={e.employment === "Employed" ? "green" : "neutral"}
                     >
                       {e.employment}
                     </Badge>
                   </td>
                   <td>
-                    <Badge tone={e.eligible ? "green" : "neutral"}>
-                      {e.eligible ? "Eligible" : "Inactive"}
-                    </Badge>
-                  </td>
-                  <td>
                     <Link
                       href={`/employees/${e.id}`}
                       aria-label={`Open ${e.name}`}
-                      className="text-link"
+                      className="button secondary small"
                     >
-                      <ArrowUpRightIcon size={15} />
+                      View
                     </Link>
                   </td>
                 </tr>
@@ -153,9 +119,7 @@ export default function Employees() {
             text="Try a different search or clear the filters."
           />
         )}
-        <div className="table-foot">
-          Showing {rows.length} of {state.employees.length} employees
-        </div>
+        <Pagination {...pager} noun="employees" />
       </section>
     </>
   );
