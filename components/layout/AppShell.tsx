@@ -11,14 +11,14 @@ import {
   CaretDownIcon,
   ListIcon,
   XIcon,
-  ArrowUpRightIcon,
   LeafIcon,
   IconContext,
 } from "@phosphor-icons/react";
-import { displayDate, displayPeriod } from "@/lib/domain/model";
+import { displayDate } from "@/lib/domain/model";
 import { accountFor } from "@/lib/auth/accounts";
 import { useApp } from "@/features/app/AppProvider";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { PageHeaderContext, type PageHeader } from "./PageHeader";
 const navigation = [
   { href: "/", label: "Overview", icon: SquaresFourIcon },
   { href: "/employees", label: "Employees", icon: UsersThreeIcon },
@@ -43,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     useApp();
   const [open, setOpen] = useState(false);
   const [roles, setRoles] = useState(false);
+  const [header, setHeader] = useState<PageHeader | null>(null);
   const isLogin = pathname === "/login";
   useEffect(() => {
     if (!ready) return;
@@ -67,7 +68,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pending = state.employees.filter(
     (e) => e.approval === "Pending",
   ).length;
-  const processed = state.runs.some((r) => r.period === state.period);
   return (
     <IconContext.Provider value={{ weight: "duotone" }}>
       <div className="app-shell">
@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
         <div className="workspace">
           <header className="topbar">
-            <div className="breadcrumb">
+            <div className="topbar-title">
               <button
                 className="mobile-menu"
                 aria-label="Open navigation"
@@ -123,9 +123,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               >
                 <ListIcon size={20} />
               </button>
-              <span>Workspace</span>
-              <span className="slash">/</span>
-              <strong>{title}</strong>
+              <div>
+                <h1>{header?.title ?? title}</h1>
+                {header?.description && <p>{header.description}</p>}
+              </div>
             </div>
             <div className="topbar-right">
               <ThemeToggle />
@@ -181,20 +182,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
-          <div className="period-strip">
-            <span>{displayPeriod(state.period)} payroll period</span>
-            <Link href="/payroll">
-              {processed ? "Processed · awaiting close" : "Open"}
-              <ArrowUpRightIcon size={13} />
-            </Link>
-          </div>
           {storageWarning && (
             <div className="notice amber">
               Local storage is unavailable. Progress will last only while this
               page stays open.
             </div>
           )}
-          <main>{children}</main>
+          <main>
+            <PageHeaderContext.Provider value={setHeader}>
+              {children}
+            </PageHeaderContext.Provider>
+          </main>
           <footer className="workspace-footer">
             <span>NLNG · People & Payroll</span>
           </footer>

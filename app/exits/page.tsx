@@ -8,6 +8,8 @@ import {
   EmployeeName,
   Modal,
   PageHeading,
+  Pagination,
+  usePagination,
 } from "@/components/ui/primitives";
 import { displayDate } from "@/lib/domain/model";
 import { ExitDialog } from "@/features/workforce/RecordDialogs";
@@ -20,6 +22,7 @@ export default function Exits() {
     (e) => e.employment === "Employed" && e.approval === "Approved",
   );
   const e = state.employees.find((e) => e.id === employeeId);
+  const pager = usePagination(state.exits);
   const canEdit =
     actor.role === "HR Officer" || actor.role === "HR/Payroll Lead";
   return (
@@ -57,52 +60,59 @@ export default function Exits() {
           <span className="count-note">{state.exits.length} records</span>
         </div>
         {state.exits.length ? (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Last working date</th>
-                  <th>Reason</th>
-                  <th>Processed by</th>
-                  <th>Current payroll</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.exits.map((x) => {
-                  const employee = state.employees.find(
-                    (e) => e.id === x.employeeId,
-                  );
-                  return (
-                    <tr key={x.id}>
-                      <td>
-                        <EmployeeName
-                          name={employee?.name ?? x.employeeId}
-                          id={x.employeeId}
-                        />
-                      </td>
-                      <td>
-                        {displayDate(x.lastWorkingDate)}
-                        <small className="block text-muted mt-1">{x.id}</small>
-                      </td>
-                      <td>{x.reason}</td>
-                      <td>
-                        {x.processedBy}
-                        <small className="block text-muted mt-1">
-                          {displayDate(x.processedDate)}
-                        </small>
-                      </td>
-                      <td>
-                        <Badge tone={employee?.eligible ? "amber" : "neutral"}>
-                          {employee?.eligible ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Last working date</th>
+                    <th>Reason</th>
+                    <th>Processed by</th>
+                    <th>Current payroll</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pager.pageRows.map((x) => {
+                    const employee = state.employees.find(
+                      (e) => e.id === x.employeeId,
+                    );
+                    return (
+                      <tr key={x.id}>
+                        <td>
+                          <EmployeeName
+                            name={employee?.name ?? x.employeeId}
+                            id={x.employeeId}
+                          />
+                        </td>
+                        <td>
+                          {displayDate(x.lastWorkingDate)}
+                          <small className="block text-muted mt-1">
+                            {x.id}
+                          </small>
+                        </td>
+                        <td>{x.reason}</td>
+                        <td>
+                          {x.processedBy}
+                          <small className="block text-muted mt-1">
+                            {displayDate(x.processedDate)}
+                          </small>
+                        </td>
+                        <td>
+                          <Badge
+                            tone={employee?.eligible ? "amber" : "neutral"}
+                          >
+                            {employee?.eligible ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Pagination {...pager} noun="exits" />
+          </>
         ) : (
           <Empty
             title="No exits recorded"

@@ -6,7 +6,6 @@ import {
   ArrowRightIcon,
   PlayIcon,
   CalendarDotsIcon,
-  ArrowUpRightIcon,
   WalletIcon,
 } from "@phosphor-icons/react";
 import { useApp } from "@/features/app/AppProvider";
@@ -16,6 +15,8 @@ import {
   EmployeeName,
   Modal,
   PageHeading,
+  Pagination,
+  usePagination,
 } from "@/components/ui/primitives";
 import {
   currency,
@@ -37,6 +38,8 @@ export default function Payroll() {
   const total = eligible.reduce((sum, e) => sum + e.salary, 0);
   const run = state.runs.find((r) => r.period === state.period);
   const rows = tab === "Included" ? eligible : excluded;
+  const preview = usePagination(rows, tab);
+  const history = usePagination([...state.runs].reverse());
   const nextPeriod = displayPeriod(nextMonth(state.period + "-01"));
   const isLead = actor.role === "HR/Payroll Lead";
   // Closing a period opens the next month early; it can't be processed until that month starts.
@@ -147,7 +150,7 @@ export default function Payroll() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((e) => (
+              {preview.pageRows.map((e) => (
                 <tr key={e.id}>
                   <td>
                     <EmployeeName name={e.name} id={e.id} />
@@ -190,6 +193,7 @@ export default function Payroll() {
             }
           />
         )}
+        <Pagination {...preview} noun="employees" />
         {!run && (
           <div className="form-actions">
             <span className="count-note mr-auto self-center">
@@ -223,44 +227,47 @@ export default function Payroll() {
           <span className="count-note">{state.runs.length} completed runs</span>
         </div>
         {state.runs.length ? (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Run ID</th>
-                  <th>Period</th>
-                  <th>Employees paid</th>
-                  <th>Total payments</th>
-                  <th>Processed by</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {[...state.runs].reverse().map((r) => (
-                  <tr key={r.id}>
-                    <td className="mono">{r.id}</td>
-                    <td>{displayPeriod(r.period)}</td>
-                    <td>{r.payments.length}</td>
-                    <td>
-                      {currency(
-                        r.payments.reduce((sum, p) => sum + p.amount, 0),
-                      )}
-                    </td>
-                    <td>{r.processedBy}</td>
-                    <td>
-                      <Link
-                        className="text-link"
-                        href={`/payroll/${r.id}`}
-                        aria-label={`Open ${r.id}`}
-                      >
-                        <ArrowUpRightIcon size={15} />
-                      </Link>
-                    </td>
+          <>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Run ID</th>
+                    <th>Period</th>
+                    <th>Employees paid</th>
+                    <th>Total payments</th>
+                    <th>Processed by</th>
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {history.pageRows.map((r) => (
+                    <tr key={r.id}>
+                      <td className="mono">{r.id}</td>
+                      <td>{displayPeriod(r.period)}</td>
+                      <td>{r.payments.length}</td>
+                      <td>
+                        {currency(
+                          r.payments.reduce((sum, p) => sum + p.amount, 0),
+                        )}
+                      </td>
+                      <td>{r.processedBy}</td>
+                      <td>
+                        <Link
+                          className="button secondary small"
+                          href={`/payroll/${r.id}`}
+                          aria-label={`Open ${r.id}`}
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination {...history} noun="runs" />
+          </>
         ) : (
           <Empty
             title="No payroll runs yet"

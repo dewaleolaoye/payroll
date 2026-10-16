@@ -41,6 +41,30 @@ export default function Login() {
             );
           }}
         >
+          <div className="account-picker">
+            <div className="account-caption">ACCOUNTS</div>
+            <div className="account-grid">
+              {accounts.map(({ actor, email: accountEmail }) => (
+                <button
+                  key={actor.id}
+                  type="button"
+                  className={`account-option ${email === accountEmail ? "selected" : ""}`}
+                  aria-pressed={email === accountEmail}
+                  onClick={() => {
+                    setEmail(accountEmail);
+                    setPassword(defaultPassword);
+                    setError("");
+                  }}
+                >
+                  <span className="avatar small">{actor.initials}</span>
+                  <span>
+                    <strong>{actor.name}</strong>
+                    <small>{actor.role}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
           <label>
             Work email
             <input
@@ -86,30 +110,6 @@ export default function Login() {
             <SignInIcon size={17} />
             Sign in
           </button>
-          <div className="account-picker">
-            <div className="account-caption">ACCOUNTS</div>
-            <div className="account-grid">
-              {accounts.map(({ actor, email: accountEmail }) => (
-                <button
-                  key={actor.id}
-                  type="button"
-                  className={`account-option ${email === accountEmail ? "selected" : ""}`}
-                  aria-pressed={email === accountEmail}
-                  onClick={() => {
-                    setEmail(accountEmail);
-                    setPassword(defaultPassword);
-                    setError("");
-                  }}
-                >
-                  <span className="avatar small">{actor.initials}</span>
-                  <span>
-                    <strong>{actor.name}</strong>
-                    <small>{actor.role}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </form>
       </div>
     </div>

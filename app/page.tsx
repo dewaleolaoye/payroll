@@ -21,7 +21,7 @@ import {
 } from "@/lib/domain/model";
 import { eligibleEmployees } from "@/lib/domain/workflow";
 export default function Overview() {
-  const { state, actor, today } = useApp();
+  const { state, today } = useApp();
   const eligible = eligibleEmployees(state, today);
   const pending = state.employees.filter((e) => e.approval === "Pending");
   const total = eligible.reduce((sum, e) => sum + e.salary, 0);
@@ -31,17 +31,8 @@ export default function Overview() {
       <PageHeading
         eyebrow="PEOPLE & PAYROLL"
         title="Workforce overview"
-        description={`A clear view of your people, approvals, and payroll. Welcome, ${actor.name.split(" ")[0]}.`}
-      >
-        <Link className="button secondary" href="/payroll">
-          <WalletIcon size={15} />
-          View payroll
-        </Link>
-        <Link className="button" href="/employees/new">
-          <PlusIcon size={15} />
-          New hire
-        </Link>
-      </PageHeading>
+        description="A clear view of your people, approvals, and payroll."
+      />
       <section className="hero">
         <div>
           <div className="hero-label">
@@ -56,9 +47,15 @@ export default function Overview() {
           </p>
         </div>
         <div className="hero-actions">
-          <Badge tone={run ? "green" : "amber"}>
-            {run ? "Processed" : "Ready for preparation"}
-          </Badge>
+          {run && <Badge tone="green">Processed</Badge>}
+          <Link className="button secondary" href="/payroll">
+            <WalletIcon size={15} />
+            View payroll
+          </Link>
+          <Link className="button secondary" href="/employees/new">
+            <PlusIcon size={15} />
+            New hire
+          </Link>
           <Link
             href={run ? `/payroll/${run.id}` : "/payroll"}
             className="button"
@@ -129,8 +126,7 @@ export default function Overview() {
                 <tr>
                   <th>Employee</th>
                   <th>Department</th>
-                  <th>HR status</th>
-                  <th>Payroll</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,11 +141,6 @@ export default function Overview() {
                         tone={e.employment === "Employed" ? "green" : "neutral"}
                       >
                         {e.employment}
-                      </Badge>
-                    </td>
-                    <td>
-                      <Badge tone={e.eligible ? "green" : "neutral"}>
-                        {e.eligible ? "Eligible" : "Inactive"}
                       </Badge>
                     </td>
                   </tr>
