@@ -1,6 +1,7 @@
 import {
   Actor,
   Employee,
+  Exit,
   PayrollRun,
   SourceEvent,
   State,
@@ -21,6 +22,7 @@ export type Action =
       salary: number;
       requisition: string;
       taxId: string;
+      offerSignedDate: string;
     }
   | { type: "submitHire"; id: string }
   | { type: "approve"; id: string }
@@ -31,6 +33,8 @@ export type Action =
       lastWorkingDate: string;
       reason: string;
     }
+  | { type: "approveExit"; exitId: string }
+  | { type: "returnExit"; exitId: string; reason: string }
   | { type: "correctEligibility"; id: string; reason: string }
   | {
       type: "correctBank";
@@ -75,6 +79,7 @@ export function transition(
   action: Action,
   actor: Actor,
   today: string,
+  now: string = new Date().toISOString(),
 ): State {
   const employee =
     "id" in action
@@ -101,11 +106,14 @@ export function transition(
           action.manager,
           action.requisition,
           action.taxId,
+          action.offerSignedDate,
         ].every((v) => v.trim()) ||
         !Number.isFinite(action.salary) ||
         action.salary <= 0
       )
         fail("Complete all hire fields with a positive salary.");
+      if (action.offerSignedDate > today)
+        fail("The offer letter signing date can't be in the future.");
       return change(
         {
           ...employee!,
@@ -115,6 +123,7 @@ export function transition(
           salary: action.salary,
           requisition: action.requisition,
           taxId: action.taxId,
+          offerSignedDate: action.offerSignedDate,
         },
         "Hire details corrected",
         "Draft/returned hire updated before resubmission.",
@@ -129,6 +138,7 @@ export function transition(
         !e.requisition.trim() ||
         !e.taxId.trim() ||
         !e.startDate ||
+        !e.offerSignedDate ||
         !e.bank ||
         !/^\d{10}$/.test(e.account) ||
         !Number.isFinite(e.salary) ||
@@ -137,6 +147,8 @@ export function transition(
         fail(
           "Complete all hire fields, including a 10-digit account and positive salary.",
         );
+      if (e.offerSignedDate > today)
+        fail("The offer letter signing date can't be in the future.");
       if (state.employees.some((existing) => existing.id === e.id))
         fail("Employee ID already exists.");
       return {
@@ -149,6 +161,8 @@ export function transition(
             approval: action.submit ? "Pending" : "Draft",
             createdBy: actor.id,
             approverId: null,
+            submittedAt: action.submit ? now : null,
+            approvedAt: null,
             employment: "Employed",
           },
         ],
@@ -170,7 +184,7 @@ export function transition(
       if (employee!.approval !== "Draft" && employee!.approval !== "Returned")
         fail("Only drafts and returned hires can be submitted.");
       return change(
-        { ...employee!, approval: "Pending" },
+        { ...employee!, approval: "Pending", submittedAt: now },
         "Hire submitted",
         "Submitted for independent approval.",
       );
@@ -186,6 +200,7 @@ export function transition(
           approval: "Approved",
           eligible: true,
           approverId: actor.id,
+          approvedAt: now,
         },
         "Hire approved",
         "Independent approval; employee activated for payroll.",
@@ -207,35 +222,111 @@ export function transition(
       if (employee!.approval !== "Approved")
         fail("Approve the hire before processing an exit.");
       if (
+        state.exits.some(
+          (x) => x.employeeId === employee!.id && x.status === "Pending",
+        )
+      )
+        fail("An exit for this employee is already awaiting approval.");
+      if (
         !action.reason.trim() ||
         action.lastWorkingDate > today ||
         action.lastWorkingDate < employee!.startDate
       )
         fail(
-          "Provide a reason and a last working date between the start date and today.",
+          "Provide a reason and a contract termination date between the start date and today.",
         );
-      const updated = change(
-        {
-          ...employee!,
-          employment: "Exited",
-          eligible: false,
-          lastActivity: action.lastWorkingDate,
-        },
-        "Exit recorded",
-        "Payroll eligibility deactivated.",
-      );
+      // The employee stays employed and payroll-eligible until the exit is approved.
+      const id = `EXIT-${String(state.exits.length + 1).padStart(3, "0")}`;
       return {
-        ...updated,
+        ...state,
         exits: [
           ...state.exits,
           {
-            id: `EXIT-${String(state.exits.length + 1).padStart(3, "0")}`,
+            id,
             employeeId: employee!.id,
             lastWorkingDate: action.lastWorkingDate,
             reason: action.reason,
             processedDate: today,
             processedBy: actor.name,
+            processedById: actor.id,
+            recordedAt: now,
+            status: "Pending",
+            approvedBy: null,
+            approvedAt: null,
+            returnReason: null,
           },
+        ],
+        events: [
+          ...state.events,
+          event(
+            state,
+            actor,
+            today,
+            "Exit recorded",
+            employee!.id,
+            `${id} submitted for independent approval.`,
+          ),
+        ],
+      };
+    }
+    case "approveExit":
+    case "returnExit": {
+      requireRole(actor, ["HR Approver"]);
+      const exit = state.exits.find((x) => x.id === action.exitId);
+      if (!exit) fail("Exit record not found.");
+      if (exit.status !== "Pending")
+        fail("Only pending exits can be reviewed.");
+      const subject = state.employees.find((e) => e.id === exit.employeeId);
+      if (!subject) fail("Employee record not found.");
+      const exits = (update: Partial<Exit>) =>
+        state.exits.map((x) => (x.id === exit.id ? { ...x, ...update } : x));
+      if (action.type === "returnExit") {
+        if (!action.reason.trim()) fail("Enter a return reason.");
+        return {
+          ...state,
+          exits: exits({ status: "Returned", returnReason: action.reason }),
+          events: [
+            ...state.events,
+            event(
+              state,
+              actor,
+              today,
+              "Exit returned",
+              subject.id,
+              action.reason,
+            ),
+          ],
+        };
+      }
+      if (exit.processedById === actor.id)
+        fail("An exit must be approved by a different HR actor.");
+      return {
+        ...state,
+        exits: exits({
+          status: "Approved",
+          approvedBy: actor.id,
+          approvedAt: now,
+        }),
+        employees: state.employees.map((e) =>
+          e.id === subject.id
+            ? {
+                ...e,
+                employment: "Exited",
+                eligible: false,
+                lastActivity: exit.lastWorkingDate,
+              }
+            : e,
+        ),
+        events: [
+          ...state.events,
+          event(
+            state,
+            actor,
+            today,
+            "Exit approved",
+            subject.id,
+            `${exit.id} approved; payroll eligibility deactivated.`,
+          ),
         ],
       };
     }
@@ -361,6 +452,7 @@ export function seed(today: string): State {
     account: `02100000${String(i + 1).padStart(2, "0")}`,
     taxId: `TIN-2026-${1000 + i}`,
     startDate: "2025-01-06",
+    offerSignedDate: "2025-01-02",
     manager: ["Michael Brown", "Sarah Williams", "Okechukwu Eze"][i % 3],
     requisition: `HC-2025-${String(i + 1).padStart(3, "0")}`,
     salary: 420000 + i * 35000,
@@ -369,10 +461,12 @@ export function seed(today: string): State {
     approval: "Approved",
     createdBy: "HR-001",
     approverId: "HR-002",
+    submittedAt: "2025-01-02T10:15:00.000Z",
+    approvedAt: "2025-01-02T15:40:00.000Z",
     lastActivity: null,
   }));
   return {
-    version: 2,
+    version: 3,
     period: period(today),
     employees,
     exits: [],
@@ -393,6 +487,7 @@ function isEmployee(value: unknown): value is Employee {
       "account",
       "taxId",
       "startDate",
+      "offerSignedDate",
       "manager",
       "requisition",
       "createdBy",
@@ -403,7 +498,9 @@ function isEmployee(value: unknown): value is Employee {
     typeof e.eligible === "boolean" &&
     ["Employed", "Exited"].includes(String(e.employment)) &&
     ["Draft", "Pending", "Approved", "Returned"].includes(String(e.approval)) &&
-    (e.approverId === null || typeof e.approverId === "string") &&
+    [e.approverId, e.submittedAt, e.approvedAt].every(
+      (v) => v === null || typeof v === "string",
+    ) &&
     (e.lastActivity === null || typeof e.lastActivity === "string")
   );
 }
@@ -417,7 +514,7 @@ export function parseState(raw: string): State | null {
       typeof v === "object" &&
       keys.every((k) => typeof (v as Record<string, unknown>)[k] === "string");
     if (
-      s.version !== 2 ||
+      s.version !== 3 ||
       typeof s.period !== "string" ||
       !/^\d{4}-\d{2}$/.test(s.period)
     )
@@ -426,15 +523,25 @@ export function parseState(raw: string): State | null {
       !Array.isArray(s.employees) ||
       !s.employees.every(isEmployee) ||
       !Array.isArray(s.exits) ||
-      !s.exits.every((e) =>
-        strings(e, [
-          "id",
-          "employeeId",
-          "lastWorkingDate",
-          "reason",
-          "processedDate",
-          "processedBy",
-        ]),
+      !s.exits.every(
+        (e) =>
+          strings(e, [
+            "id",
+            "employeeId",
+            "lastWorkingDate",
+            "reason",
+            "processedDate",
+            "processedBy",
+            "processedById",
+            "recordedAt",
+          ]) &&
+          ["Pending", "Approved", "Returned"].includes(
+            String((e as Record<string, unknown>).status),
+          ) &&
+          ["approvedBy", "approvedAt", "returnReason"].every((k) => {
+            const v = (e as Record<string, unknown>)[k];
+            return v === null || typeof v === "string";
+          }),
       )
     )
       return null;

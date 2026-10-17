@@ -36,7 +36,7 @@ export function ExitDialog({
       >
         <div className="modal-body">
           <label>
-            Last working date
+            Contract termination date
             <input
               required
               type="date"
@@ -55,8 +55,8 @@ export function ExitDialog({
             />
           </label>
           <div className="notice" style={{ marginBottom: 0 }}>
-            Recording the exit will deactivate payroll eligibility. The employee
-            will be excluded from the next payroll run.
+            The exit is sent to an HR Approver. Payroll eligibility is
+            deactivated once the exit is approved.
           </div>
         </div>
         <div className="modal-actions">
@@ -197,6 +197,7 @@ export function HireEditDialog({
     salary: String(employee.salary),
     requisition: employee.requisition,
     taxId: employee.taxId,
+    offerSignedDate: employee.offerSignedDate,
   });
   return (
     <Modal
@@ -227,6 +228,7 @@ export function HireEditDialog({
               "salary",
               "requisition",
               "taxId",
+              "offerSignedDate",
             ] as const
           ).map((key) => (
             <label key={key}>
@@ -238,11 +240,18 @@ export function HireEditDialog({
                   salary: "Monthly salary (NGN)",
                   requisition: "Approved requisition",
                   taxId: "Tax ID",
+                  offerSignedDate: "Offer letter signed",
                 }[key]
               }
               <input
                 required
-                type={key === "salary" ? "number" : "text"}
+                type={
+                  key === "salary"
+                    ? "number"
+                    : key === "offerSignedDate"
+                      ? "date"
+                      : "text"
+                }
                 min={key === "salary" ? "1" : undefined}
                 value={values[key]}
                 onChange={(e) =>

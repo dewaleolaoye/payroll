@@ -16,7 +16,7 @@ const run = (
   action: Action,
   actor = officer,
   date = today,
-): State => transition(state, action, actor, date);
+): State => transition(state, action, actor, date, `${today}T09:00:00.000Z`);
 const hire = (state: State): Employee => ({
   ...state.employees[0],
   id: "EMP-013",
@@ -25,7 +25,10 @@ const hire = (state: State): Employee => ({
   eligible: false,
   createdBy: officer.id,
   approverId: null,
+  submittedAt: null,
+  approvedAt: null,
   startDate: today,
+  offerSignedDate: today,
 });
 test("seed opens the current month with no history", () => {
   const state = seed(today);
@@ -87,7 +90,7 @@ test("a period that hasn't started can't be processed", () => {
   assert.equal(state.runs[1].id, "RUN-202611");
   assert.equal(state.runs[1].date, nextMonthDay);
 });
-test("recording an exit deactivates eligibility and keeps earlier runs", () => {
+test("an approved exit deactivates eligibility and keeps earlier runs", () => {
   let state = run(seed(today), { type: "processPayroll" }, payroll);
   const snapshot = JSON.stringify(state.runs[0]);
   assert.throws(() =>
@@ -104,6 +107,8 @@ test("recording an exit deactivates eligibility and keeps earlier runs", () => {
     lastWorkingDate: today,
     reason: "Assignment ended",
   });
+  state = run(state, { type: "approveExit", exitId: "EXIT-001" }, approver);
+  assert.equal(state.exits[0].status, "Approved");
   assert.equal(state.employees[0].employment, "Exited");
   assert.equal(state.employees[0].eligible, false);
   state = run(state, { type: "closePeriod" }, lead);
@@ -171,6 +176,7 @@ test("returned hire can be corrected and independently reapproved", () => {
     salary: 480000,
     requisition: "HC-2026-091",
     taxId: "TIN-9001",
+    offerSignedDate: today,
   });
   state = run(state, { type: "submitHire", id: "EMP-013" });
   state = run(state, { type: "approve", id: "EMP-013" }, approver);
@@ -190,9 +196,81 @@ test("persistence round-trips and rejects old or malformed data", () => {
     parseState(JSON.stringify({ ...state, version: 1, scenario: "x" })),
     null,
   );
+  assert.equal(parseState(JSON.stringify({ ...state, version: 2 })), null);
   assert.equal(
     parseState(JSON.stringify({ ...state, runs: [{ id: "bad" }] })),
     null,
   );
   assert.deepEqual(seed(today), seed(today));
+});
+
+const recordExit = (state: State, id = "EMP-001", date = "2026-10-09") =>
+  run(state, {
+    type: "exit",
+    id,
+    lastWorkingDate: date,
+    reason: "Contract terminated",
+  });
+test("a pending exit keeps the employee employed and paid", () => {
+  let state = recordExit(seed(today));
+  assert.equal(state.exits[0].status, "Pending");
+  assert.equal(state.exits[0].recordedAt, "2026-10-12T09:00:00.000Z");
+  assert.equal(state.employees[0].employment, "Employed");
+  assert.equal(state.employees[0].eligible, true);
+  state = run(state, { type: "processPayroll" }, payroll);
+  assert.ok(state.runs[0].payments.some((p) => p.employeeId === "EMP-001"));
+});
+test("exit approval requires an independent HR Approver", () => {
+  const state = recordExit(seed(today));
+  assert.throws(() =>
+    run(state, { type: "approveExit", exitId: "EXIT-001" }, officer),
+  );
+  assert.throws(() =>
+    run(state, { type: "approveExit", exitId: "EXIT-001" }, lead),
+  );
+  assert.throws(
+    () =>
+      run(
+        state,
+        { type: "approveExit", exitId: "EXIT-001" },
+        { ...approver, id: officer.id },
+      ),
+    /different HR actor/,
+  );
+  assert.throws(() => recordExit(state), /awaiting approval/);
+});
+test("a returned exit leaves the employee eligible and can be re-recorded", () => {
+  let state = recordExit(seed(today));
+  state = run(
+    state,
+    { type: "returnExit", exitId: "EXIT-001", reason: "Wrong date" },
+    approver,
+  );
+  assert.equal(state.exits[0].status, "Returned");
+  assert.equal(state.exits[0].returnReason, "Wrong date");
+  assert.equal(state.employees[0].eligible, true);
+  state = recordExit(state, "EMP-001", today);
+  assert.equal(state.exits[1].status, "Pending");
+});
+test("late approvals are accepted without SLA checks", () => {
+  let state = run(seed(today), {
+    type: "saveHire",
+    employee: { ...hire(seed(today)), offerSignedDate: "2026-10-02" },
+    submit: true,
+  });
+  assert.equal(state.employees.at(-1)?.submittedAt, "2026-10-12T09:00:00.000Z");
+  state = run(state, { type: "approve", id: "EMP-013" }, approver);
+  assert.equal(state.employees.at(-1)?.approval, "Approved");
+  assert.equal(state.employees.at(-1)?.approvedAt, "2026-10-12T09:00:00.000Z");
+  assert.throws(() =>
+    run(state, {
+      type: "saveHire",
+      employee: {
+        ...hire(state),
+        id: "EMP-014",
+        offerSignedDate: "2026-10-13",
+      },
+      submit: true,
+    }),
+  );
 });

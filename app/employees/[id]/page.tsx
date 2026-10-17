@@ -16,7 +16,13 @@ import {
   Pagination,
   usePagination,
 } from "@/components/ui/primitives";
-import { currency, displayDate, displayPeriod } from "@/lib/domain/model";
+import {
+  actorName,
+  currency,
+  displayDate,
+  displayDateTime,
+  displayPeriod,
+} from "@/lib/domain/model";
 import {
   BankDialog,
   CorrectionDialog,
@@ -51,6 +57,7 @@ export default function EmployeeDetail({
       />
     );
   const exits = state.exits.filter((x) => x.employeeId === id);
+  const exitPending = exits.some((x) => x.status === "Pending");
   const canEdit =
     actor.role === "HR Officer" || actor.role === "HR/Payroll Lead";
   const fields =
@@ -65,11 +72,17 @@ export default function EmployeeDetail({
         ]
       : tab === "Employment"
         ? [
+            ["Offer letter signed", displayDate(e.offerSignedDate)],
             ["Start date", displayDate(e.startDate)],
             ["Headcount requisition", e.requisition],
             ["Approval status", e.approval],
-            ["Created by", e.createdBy],
-            ["Approver ID", e.approverId ?? "Awaiting approval"],
+            ["Created by", actorName(e.createdBy)],
+            ["Submitted", displayDateTime(e.submittedAt)],
+            [
+              "Approved by",
+              e.approverId ? actorName(e.approverId) : "Awaiting approval",
+            ],
+            ["Approved", displayDateTime(e.approvedAt)],
             ["Employment status", e.employment],
           ]
         : [
@@ -99,7 +112,8 @@ export default function EmployeeDetail({
         {e.employment === "Employed" && e.approval === "Approved" && (
           <button
             className="button secondary"
-            disabled={!canEdit}
+            disabled={!canEdit || exitPending}
+            title={exitPending ? "Exit awaiting approval" : undefined}
             onClick={() => setDialog("exit")}
           >
             <SignOutIcon size={14} />
@@ -224,10 +238,23 @@ export default function EmployeeDetail({
                 <h2>Exit record · {x.id}</h2>
                 <div className="detail-grid" style={{ padding: "20px 0 0" }}>
                   {[
-                    ["Last working date", displayDate(x.lastWorkingDate)],
+                    [
+                      "Contract termination date",
+                      displayDate(x.lastWorkingDate),
+                    ],
                     ["Reason", x.reason],
-                    ["Processed date", displayDate(x.processedDate)],
-                    ["Processed by", x.processedBy],
+                    ["Recorded", displayDateTime(x.recordedAt)],
+                    ["Recorded by", x.processedBy],
+                    [
+                      "Status",
+                      x.status === "Pending" ? "Pending approval" : x.status,
+                    ],
+                    [
+                      x.status === "Returned" ? "Return reason" : "Approved",
+                      x.status === "Returned"
+                        ? (x.returnReason ?? "—")
+                        : displayDateTime(x.approvedAt),
+                    ],
                   ].map(([label, value]) => (
                     <div className="detail-field" key={label}>
                       <small>{label}</small>

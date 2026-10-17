@@ -10,6 +10,8 @@ export interface Employee {
   account: string;
   taxId: string;
   startDate: string;
+  /** Date the candidate signed the offer letter, "YYYY-MM-DD". */
+  offerSignedDate: string;
   manager: string;
   requisition: string;
   salary: number;
@@ -18,15 +20,26 @@ export interface Employee {
   approval: Approval;
   createdBy: string;
   approverId: string | null;
+  /** ISO timestamps kept as evidence for audit monitoring. */
+  submittedAt: string | null;
+  approvedAt: string | null;
   lastActivity: string | null;
 }
+export type ExitStatus = "Pending" | "Approved" | "Returned";
 export interface Exit {
   id: string;
   employeeId: string;
+  /** Contract termination date, "YYYY-MM-DD". */
   lastWorkingDate: string;
   reason: string;
   processedDate: string;
   processedBy: string;
+  processedById: string;
+  recordedAt: string;
+  status: ExitStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  returnReason: string | null;
 }
 export interface Payment {
   id: string;
@@ -55,7 +68,7 @@ export interface SourceEvent {
   note: string;
 }
 export interface State {
-  version: 2;
+  version: 3;
   /** Open payroll period, "YYYY-MM". Closed manually by the HR/Payroll Lead. */
   period: string;
   employees: Employee[];
@@ -108,6 +121,20 @@ export function displayDate(date: string): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+/** An ISO timestamp as "16 Oct 2026, 14:05" in local time; "—" when absent. */
+export function displayDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+export function actorName(id: string | null): string {
+  return actors.find((a) => a.id === id)?.name ?? id ?? "—";
 }
 /** Today's local calendar date as "YYYY-MM-DD". */
 export function today(): string {
