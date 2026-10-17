@@ -11,7 +11,7 @@ import {
   Pagination,
   usePagination,
 } from "@/components/ui/primitives";
-import { displayDate } from "@/lib/domain/model";
+import { displayDate, displayDateTime } from "@/lib/domain/model";
 import { ExitDialog } from "@/features/workforce/RecordDialogs";
 export default function Exits() {
   const { state, actor } = useApp();
@@ -19,7 +19,10 @@ export default function Exits() {
   const [selected, setSelected] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const candidates = state.employees.filter(
-    (e) => e.employment === "Employed" && e.approval === "Approved",
+    (e) =>
+      e.employment === "Employed" &&
+      e.approval === "Approved" &&
+      !state.exits.some((x) => x.employeeId === e.id && x.status === "Pending"),
   );
   const e = state.employees.find((e) => e.id === employeeId);
   const pager = usePagination(state.exits);
@@ -66,9 +69,10 @@ export default function Exits() {
                 <thead>
                   <tr>
                     <th>Employee</th>
-                    <th>Last working date</th>
+                    <th>Termination date</th>
                     <th>Reason</th>
-                    <th>Processed by</th>
+                    <th>Recorded by</th>
+                    <th>Status</th>
                     <th>Current payroll</th>
                   </tr>
                 </thead>
@@ -95,8 +99,23 @@ export default function Exits() {
                         <td>
                           {x.processedBy}
                           <small className="block text-muted mt-1">
-                            {displayDate(x.processedDate)}
+                            {displayDateTime(x.recordedAt)}
                           </small>
+                        </td>
+                        <td>
+                          <Badge
+                            tone={
+                              x.status === "Approved"
+                                ? "green"
+                                : x.status === "Pending"
+                                  ? "amber"
+                                  : "neutral"
+                            }
+                          >
+                            {x.status === "Pending"
+                              ? "Pending approval"
+                              : x.status}
+                          </Badge>
                         </td>
                         <td>
                           <Badge

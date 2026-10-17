@@ -21,6 +21,7 @@ export default function NewHire() {
     account: "",
     taxId: "",
     startDate: today,
+    offerSignedDate: today,
     manager: "",
     requisition: "",
     salary: "450000",
@@ -41,6 +42,8 @@ export default function NewHire() {
       approval: "Draft",
       createdBy: actor.id,
       approverId: null,
+      submittedAt: null,
+      approvedAt: null,
       lastActivity: null,
     };
     if (act({ type: "saveHire", employee, submit: submitted }))
@@ -113,6 +116,16 @@ export default function NewHire() {
                 />
               </label>
               <label>
+                Offer letter signed
+                <input
+                  required
+                  type="date"
+                  max={today}
+                  value={draft.offerSignedDate}
+                  onChange={(e) => field("offerSignedDate", e.target.value)}
+                />
+              </label>
+              <label>
                 Start date
                 <input
                   required
@@ -130,7 +143,9 @@ export default function NewHire() {
                 >
                   <option value="">Select approved requisition</option>
                   {["HC-2026-091", "HC-2026-092", "HC-2026-093"].map((r) => (
-                    <option key={r}>{r} · Approved</option>
+                    <option key={r} value={r}>
+                      {r} · Approved
+                    </option>
                   ))}
                 </select>
               </label>

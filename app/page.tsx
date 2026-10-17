@@ -213,7 +213,7 @@ export default function Overview() {
             },
             {
               title: "Handle the exit",
-              text: "Deactivate eligibility before the next payroll run.",
+              text: "Record the exit; approval deactivates payroll eligibility.",
             },
           ].map((s, i) => (
             <div className="process-step" key={s.title}>

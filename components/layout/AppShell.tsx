@@ -6,6 +6,7 @@ import {
   SquaresFourIcon,
   UsersThreeIcon,
   SealCheckIcon,
+  ClockCountdownIcon,
   SignOutIcon,
   WalletIcon,
   CaretDownIcon,
@@ -22,9 +23,10 @@ import { PageHeaderContext, type PageHeader } from "./PageHeader";
 const navigation = [
   { href: "/", label: "Overview", icon: SquaresFourIcon },
   { href: "/employees", label: "Employees", icon: UsersThreeIcon },
-  { href: "/approvals", label: "Hire approvals", icon: SealCheckIcon },
+  { href: "/approvals", label: "Approvals", icon: SealCheckIcon },
   { href: "/exits", label: "Exits", icon: SignOutIcon },
   { href: "/payroll", label: "Payroll", icon: WalletIcon },
+  { href: "/sla", label: "SLA", icon: ClockCountdownIcon },
 ];
 // Only same-site paths are honoured, so ?next= cannot redirect off the app.
 function nextPath(): string {
@@ -65,9 +67,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     navigation.find((n) =>
       n.href === "/" ? pathname === "/" : pathname.startsWith(n.href),
     )?.label ?? "";
-  const pending = state.employees.filter(
-    (e) => e.approval === "Pending",
-  ).length;
+  const pending =
+    state.employees.filter((e) => e.approval === "Pending").length +
+    state.exits.filter((x) => x.status === "Pending").length;
   return (
     <IconContext.Provider value={{ weight: "duotone" }}>
       <div className="app-shell">

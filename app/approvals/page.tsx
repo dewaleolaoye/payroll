@@ -8,33 +8,118 @@ import {
 } from "@phosphor-icons/react";
 import { useApp } from "@/features/app/AppProvider";
 import { Badge, Empty, Modal, PageHeading } from "@/components/ui/primitives";
-import { currency, displayDate } from "@/lib/domain/model";
+import {
+  actorName,
+  currency,
+  displayDate,
+  displayDateTime,
+} from "@/lib/domain/model";
+import type { Action } from "@/lib/domain/workflow";
+type Tab = "Hires" | "Exits";
+interface Item {
+  key: string;
+  employeeId: string;
+  name: string;
+  lines: string[];
+  subtitle: string;
+  fields: [string, string][];
+  approve: Action;
+  reject: (reason: string) => Action;
+}
 export default function Approvals() {
   const { state, actor, act } = useApp();
-  const pending = state.employees.filter((e) => e.approval === "Pending");
+  const [tab, setTab] = useState<Tab>("Hires");
   const [selected, setSelected] = useState("");
   const [returning, setReturning] = useState(false);
   const [reason, setReason] = useState("");
-  const e = pending.find((e) => e.id === selected) ?? pending[0];
+  const hires: Item[] = state.employees
+    .filter((e) => e.approval === "Pending")
+    .map((e) => ({
+      key: e.id,
+      employeeId: e.id,
+      name: e.name,
+      lines: [`${e.id} · ${e.department}`, e.job],
+      subtitle: `${e.id} · Submitted by ${actorName(e.createdBy)}`,
+      fields: [
+        ["Department", e.department],
+        ["Job role", e.job],
+        ["Offer letter signed", displayDate(e.offerSignedDate)],
+        ["Start date", displayDate(e.startDate)],
+        ["Submitted", displayDateTime(e.submittedAt)],
+        ["Manager", e.manager],
+        ["Approved requisition", e.requisition],
+        ["Salary", currency(e.salary)],
+        ["Bank", e.bank],
+        ["Account", e.account],
+        ["Tax ID", e.taxId],
+      ],
+      approve: { type: "approve", id: e.id },
+      reject: (reason) => ({ type: "return", id: e.id, reason }),
+    }));
+  const exits: Item[] = state.exits
+    .filter((x) => x.status === "Pending")
+    .map((x) => {
+      const e = state.employees.find((e) => e.id === x.employeeId);
+      return {
+        key: x.id,
+        employeeId: x.employeeId,
+        name: e?.name ?? x.employeeId,
+        lines: [`${x.employeeId} · ${e?.department ?? ""}`, x.id],
+        subtitle: `${x.id} · Recorded by ${x.processedBy}`,
+        fields: [
+          ["Department", e?.department ?? "—"],
+          ["Job role", e?.job ?? "—"],
+          ["Contract termination date", displayDate(x.lastWorkingDate)],
+          ["Recorded", displayDateTime(x.recordedAt)],
+          ["Exit reason", x.reason],
+          ["Monthly salary", e ? currency(e.salary) : "—"],
+        ],
+        approve: { type: "approveExit", exitId: x.id },
+        reject: (reason) => ({ type: "returnExit", exitId: x.id, reason }),
+      };
+    });
+  const items = tab === "Hires" ? hires : exits;
+  const item = items.find((i) => i.key === selected) ?? items[0];
+  const noun = tab === "Hires" ? "hire" : "exit";
+  const isApprover = actor.role === "HR Approver";
   return (
     <>
       <PageHeading
-        eyebrow="INDEPENDENT VERIFICATION"
-        title="Hire approvals"
-        description="Review submitted hires before they become active in payroll."
+        title="Approvals"
+        description="Independently review hires and exits recorded by HR."
       />
-      <div className="notice">
-        {actor.role === "HR Approver"
-          ? "You are reviewing as the second HR approver. Approval activates payroll eligibility."
-          : "Only an HR Approver can approve or return a hire."}
+      <div className="tabs" style={{ marginTop: 0 }}>
+        {(["Hires", "Exits"] as const).map((t) => (
+          <button
+            key={t}
+            className={tab === t ? "active" : ""}
+            onClick={() => {
+              setTab(t);
+              setSelected("");
+            }}
+          >
+            {t} ({(t === "Hires" ? hires : exits).length})
+          </button>
+        ))}
       </div>
-      {!pending.length ? (
+      <div className="notice">
+        {isApprover
+          ? tab === "Hires"
+            ? "You are reviewing as the second HR approver. Approval activates payroll eligibility."
+            : "You are reviewing as the second HR approver. Approval ends the employment and deactivates payroll eligibility."
+          : `Only an HR Approver can approve or return ${tab === "Hires" ? "a hire" : "an exit"}.`}
+      </div>
+      {!item ? (
         <section className="surface">
           <Empty
             title="All caught up"
-            text="There are no pending hires. Hires submitted by HR will appear here for independent approval."
-            href="/employees/new"
-            action="Create a hire"
+            text={
+              tab === "Hires"
+                ? "There are no pending hires. Hires submitted by HR will appear here for independent approval."
+                : "There are no pending exits. Exits recorded by HR will appear here for independent approval."
+            }
+            href={tab === "Hires" ? "/employees/new" : "/exits"}
+            action={tab === "Hires" ? "Create a hire" : "Go to exits"}
           />
         </section>
       ) : (
@@ -42,19 +127,18 @@ export default function Approvals() {
           <section className="surface approval-queue">
             <div className="section-head">
               <h2>Pending review</h2>
-              <Badge tone="amber">{pending.length}</Badge>
+              <Badge tone="amber">{items.length}</Badge>
             </div>
-            {pending.map((p) => (
+            {items.map((i) => (
               <button
-                key={p.id}
-                className={`approval-item ${e.id === p.id ? "active" : ""}`}
-                onClick={() => setSelected(p.id)}
+                key={i.key}
+                className={`approval-item ${item.key === i.key ? "active" : ""}`}
+                onClick={() => setSelected(i.key)}
               >
-                <strong>{p.name}</strong>
-                <small>
-                  {p.id} · {p.department}
-                </small>
-                <small>{p.job}</small>
+                <strong>{i.name}</strong>
+                {i.lines.map((line) => (
+                  <small key={line}>{line}</small>
+                ))}
                 <Badge tone="amber">Pending approval</Badge>
               </button>
             ))}
@@ -62,28 +146,19 @@ export default function Approvals() {
           <section className="surface">
             <div className="section-head">
               <div>
-                <h2>{e.name}</h2>
-                <p>
-                  {e.id} · Submitted by {e.createdBy}
-                </p>
+                <h2>{item.name}</h2>
+                <p>{item.subtitle}</p>
               </div>
-              <Link href={`/employees/${e.id}`} className="text-link">
+              <Link
+                href={`/employees/${item.employeeId}`}
+                className="text-link"
+              >
                 Employee record
                 <ArrowUpRightIcon size={14} />
               </Link>
             </div>
             <div className="detail-grid">
-              {[
-                ["Department", e.department],
-                ["Job role", e.job],
-                ["Start date", displayDate(e.startDate)],
-                ["Manager", e.manager],
-                ["Approved requisition", e.requisition],
-                ["Salary", currency(e.salary)],
-                ["Bank", e.bank],
-                ["Account", e.account],
-                ["Tax ID", e.taxId],
-              ].map(([label, value]) => (
+              {item.fields.map(([label, value]) => (
                 <div className="detail-field" key={label}>
                   <small>{label}</small>
                   <strong>{value}</strong>
@@ -93,14 +168,15 @@ export default function Approvals() {
             <div className="form-section">
               <h2>Approval outcome</h2>
               <p className="!mb-0">
-                Confirm the requisition and employee details. Approval makes the
-                hire active for the next eligible payroll period.
+                {tab === "Hires"
+                  ? "Confirm the requisition and employee details. Approval makes the hire active for the next eligible payroll period."
+                  : "Confirm the termination details. Approval marks the employee as exited and removes them from future payroll runs."}
               </p>
             </div>
             <div className="form-actions">
               <button
                 className="button secondary"
-                disabled={actor.role !== "HR Approver"}
+                disabled={!isApprover}
                 onClick={() => setReturning(true)}
               >
                 <ArrowUUpLeftIcon size={14} />
@@ -108,26 +184,26 @@ export default function Approvals() {
               </button>
               <button
                 className="button"
-                disabled={actor.role !== "HR Approver"}
-                onClick={() => act({ type: "approve", id: e.id })}
+                disabled={!isApprover}
+                onClick={() => act(item.approve)}
               >
                 <CheckIcon size={14} />
-                Approve hire
+                Approve {noun}
               </button>
             </div>
           </section>
         </div>
       )}
-      {returning && e && (
+      {returning && item && (
         <Modal
-          title="Return hire for correction"
-          description={e.name}
+          title={`Return ${noun} for correction`}
+          description={item.name}
           onClose={() => setReturning(false)}
         >
           <form
             onSubmit={(ev) => {
               ev.preventDefault();
-              if (act({ type: "return", id: e.id, reason })) {
+              if (act(item.reject(reason))) {
                 setReturning(false);
                 setReason("");
               }
@@ -152,7 +228,7 @@ export default function Approvals() {
               >
                 Cancel
               </button>
-              <button className="button">Return hire</button>
+              <button className="button">Return {noun}</button>
             </div>
           </form>
         </Modal>

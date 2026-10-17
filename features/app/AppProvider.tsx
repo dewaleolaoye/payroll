@@ -29,8 +29,8 @@ interface ContextValue {
   notify: (message: string) => void;
 }
 const Context = createContext<ContextValue | null>(null);
-const key = "nlng-payroll-v2";
-const legacyKey = "nlng-payroll-v1";
+const key = "nlng-payroll-v3";
+const legacyKeys = ["nlng-payroll-v1", "nlng-payroll-v2"];
 const sessionKey = "nlng-payroll-session";
 function parseSession(raw: string | null): Session | null {
   if (!raw) return null;
@@ -57,7 +57,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       setSession(parseSession(localStorage.getItem(sessionKey)));
-      localStorage.removeItem(legacyKey);
+      legacyKeys.forEach((k) => localStorage.removeItem(k));
       const raw = localStorage.getItem(key);
       if (raw) {
         const saved = parseState(raw);
@@ -100,7 +100,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             ? "Payroll processed."
             : action.type === "closePeriod"
               ? "Payroll period closed. The next period is open."
-              : "Changes saved.",
+              : action.type === "exit"
+                ? "Exit recorded — awaiting approval."
+                : action.type === "approveExit"
+                  ? "Exit approved."
+                  : action.type === "returnExit"
+                    ? "Exit returned."
+                    : "Changes saved.",
         );
         return true;
       } catch (error) {
